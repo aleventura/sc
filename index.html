@@ -46,11 +46,8 @@
     justify-content:space-between}
   .active-filter{background:var(--acc2);color:#fff;font-size:14px;padding:8px 12px;
     border-radius:8px;display:inline-flex;gap:8px;align-items:center;cursor:pointer;
-    font-weight:600;line-height:1.2;flex-direction:row-reverse;flex-shrink:1;
+    font-weight:600;line-height:1.2;flex-shrink:1;
     min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .active-filter .clear-x{background:rgba(0,0,0,.25);border-radius:50%;width:22px;height:22px;
-    display:inline-flex;align-items:center;justify-content:center;font-size:14px;
-    font-weight:700;margin-right:2px;flex-shrink:0}
   .active-filter:active{opacity:.7}
   .search-row{display:flex;gap:6px;padding:6px 10px 0}
   .search-input{flex:1 1 0;min-width:0;background:var(--btn);border:1px solid var(--border);
@@ -71,16 +68,17 @@
   .badge.dl-badge{background:var(--acc);color:#fff;text-decoration:none;cursor:pointer;
     padding:2px 8px;font-weight:600}
   .badge.dl-badge:active{opacity:.7}
-  .badge.tipo-up{background:rgba(62,207,142,.16);color:var(--ok);border:1px solid var(--ok);font-weight:700}
-  .badge.tipo-rep{background:rgba(78,161,255,.16);color:var(--acc2);border:1px solid var(--acc2);font-weight:700}
+  .badge.tipo-up{background:rgba(62,207,142,.16);color:var(--ok);border:1px solid var(--ok);font-weight:700;font-size:10px;padding:1px 6px;letter-spacing:.5px}
+  .badge.tipo-rep{background:rgba(78,161,255,.16);color:var(--acc2);border:1px solid var(--acc2);font-weight:700;font-size:10px;padding:1px 6px;letter-spacing:.5px}
   .actions{display:flex;gap:6px;margin-top:6px;flex-wrap:wrap}
+  .row-break{flex-basis:100%;height:0}
   .btn{flex:1;padding:8px 6px;background:var(--btn);border:1px solid var(--border);
     border-radius:8px;color:var(--fg);font-size:13px;cursor:pointer;font-weight:500}
   .btn:active{background:var(--btn-hover)}
   .btn.play{background:var(--acc);border-color:var(--acc);color:#fff}
-  .btn.play.playing{background:var(--btn);border-color:var(--acc);color:var(--acc)}
+  .btn.play.playing{flex:0 0 auto;padding:8px 14px;background:var(--btn);border-color:var(--acc);color:var(--acc);font-size:16px}
   .btn.next{flex:0 0 auto;padding:8px 14px;background:var(--acc);border-color:var(--acc);color:#fff;font-weight:700}
-  .btn.seek{flex:0 0 auto;padding:8px 10px;background:var(--btn);border-color:var(--acc);color:var(--acc);font-weight:600;font-size:12px;min-width:52px}
+  .btn.seek{flex:1;padding:12px 8px;background:var(--btn);border-color:var(--acc);color:var(--acc);font-weight:700;font-size:14px}
   .btn.mark{padding:20px 6px;font-size:18px}
   .btn.g.on{background:var(--ok);border-color:var(--ok);color:#0e0e10}
   .btn.x.on{background:var(--no);border-color:var(--no);color:#fff}
@@ -126,95 +124,9 @@ const TRACKS_URL = 'tracks.json?t=' + Date.now();
 const SYNC_URL = 'https://script.google.com/macros/s/AKfycby3uI-6sm_Q6igc4jmebxi9xz5s_DDWuidx1EIGWuAtRAUH0_hgx0p-EHK5g9lYSylJ/exec';
 const LS = 'sc_tracks_state_v1';
 
-// DEV_MODE: si es true, ignora tracks.json y usa DEV_TRACKS de abajo.
-// Ponelo en false (o borra el bloque) cuando quieras usar el JSON real.
+// Modo producción: carga tracks.json real y sincroniza con Google Sheet.
 const DEV_MODE = false;
-const DEV_TRACKS = [
-  {
-    id: "maccabihouse--daft-punk-hbfs-rafael-maccabi-edit",
-    u: "https://soundcloud.com/maccabihouse/daft-punk-hbfs-rafael-maccabi-edit",
-    t: "Daft Punk - HBFS (Rafael Maccabi Edit)",
-    a: "Maccabi House",
-    d: "2026-06-15",
-    r: 3421, c: 187, l: 12450,
-    g: "Indie Dance / Nu Disco",
-    dur: 6.4,
-    dl: "hypeddit",
-    dlu: "https://hypeddit.com/maccabihouse/hbfsedit",
-    cta: "wans",
-    tipo: "REP"
-  },
-  {
-    id: "djchrisstussy--chris-stussy-desire-1",
-    u: "https://soundcloud.com/djchrisstussy/chris-stussy-desire-1",
-    t: "Desire",
-    a: "Chris Stussy",
-    d: "2026-06-10",
-    r: 892, c: 45, l: 3210,
-    g: "Tech House",
-    dur: 5.8,
-    dl: "bandcamp",
-    dlu: "https://chrisstussy.bandcamp.com",
-    cta: "djchrisstussy",
-    tipo: "UP"
-  },
-  {
-    id: "maccabihouse--congagabssedit",
-    u: "https://soundcloud.com/maccabihouse/gloria-estefan-conga-gabss-maccabi-edit",
-    t: "Gloria Estefan - Conga (Gabss Maccabi Edit)",
-    a: "Maccabi House",
-    d: "2026-06-08",
-    r: 5820, c: 312, l: 18900,
-    g: "House",
-    dur: 4.9,
-    dl: "hypeddit",
-    dlu: "https://hypeddit.com/maccabihouse/congagabssedit",
-    cta: "davo",
-    tipo: "REP"
-  },
-  {
-    id: "maccabihouse--crystalisededit",
-    u: "https://soundcloud.com/maccabihouse/the-xx-crystalised-bletter-maccabi-edit",
-    t: "The XX - Crystalised (Bletter Maccabi Edit)",
-    a: "Maccabi House",
-    d: "2026-06-05",
-    r: 1234, c: 89, l: 6500,
-    g: "Indie Dance",
-    dur: 5.2,
-    dl: "hypeddit",
-    dlu: "https://hypeddit.com/maccabihouse/crystalisededit",
-    cta: "wuki",
-    tipo: "REP"
-  },
-  {
-    id: "maccabihouse--sevennationarmyedit",
-    u: "https://soundcloud.com/maccabihouse/the-white-strips-seven-nation-army-the-botanist-maccabi-edit",
-    t: "The White Stripes - Seven Nation Army (The Botanist Maccabi Edit)",
-    a: "Maccabi House",
-    d: "2026-06-01",
-    r: 2100, c: 156, l: 9800,
-    g: "Indie Dance",
-    dur: 6.1,
-    dl: "hypeddit",
-    dlu: "https://hypeddit.com/maccabihouse/sevennationarmyedit",
-    cta: "davo",
-    tipo: "REP"
-  },
-  {
-    id: "maccabihouse--keepmovingkoedit",
-    u: "https://soundcloud.com/maccabihouse/jungle-keep-moving-ko-maccabi-edit",
-    t: "Jungle - Keep Moving (K.O Maccabi Edit)",
-    a: "Maccabi House",
-    d: "2026-05-28",
-    r: 780, c: 34, l: 2900,
-    g: "House",
-    dur: 7.3,
-    dl: "hypeddit",
-    dlu: "https://hypeddit.com/maccabihouse/keepmovingkoedit",
-    cta: "maccabihouse",
-    tipo: "UP"
-  }
-];
+const DEV_TRACKS = [];
 
 // ============================================================
 // STATE
@@ -347,9 +259,11 @@ function render(){
         window.open(el.dataset.artistUrl, '_blank', 'noopener');
       });
     });
-    list.querySelectorAll('[data-account-url]').forEach(el => {
+    list.querySelectorAll('[data-account]').forEach(el => {
       el.addEventListener('click', () => {
-        window.open(el.dataset.accountUrl, '_blank', 'noopener');
+        filterAccount = el.dataset.account;
+        document.getElementById('selectAccount').value = filterAccount;
+        render();
       });
     });
 
@@ -371,14 +285,14 @@ function render(){
   const af = document.getElementById('activeFilters');
   const chips = [];
   if (filterAccount) {
-    chips.push('<span class="active-filter" data-clear="account">Cuenta: ' + esc(filterAccount) + '<span class="clear-x">✕</span></span>');
+    chips.push('<span class="active-filter" data-clear="account">Cuenta: ' + esc(filterAccount) + '</span>');
   }
 
   // Botón bulk-descartar: aparece si hay filtro por cuenta activo (para no descartar todos los "Nuevos" por accidente)
   const hasFilter = filterAccount;
   const notAlreadyDescartados = filterState !== 'descartados'; // no tiene sentido descartar los ya descartados
   if (hasFilter && notAlreadyDescartados && filtered.length > 0) {
-    chips.push('<button class="bulk-btn" data-bulk="x">Descartar ' + fmt(filtered.length) + ' visibles ✕</button>');
+    chips.push('<button class="bulk-btn" data-bulk="x">Descartar ' + fmt(filtered.length) + ' visibles</button>');
   }
 
   af.innerHTML = chips.join('');
@@ -442,23 +356,30 @@ function cardHTML(t){
   const account = t.cta || '';
   const isRepost = (t.tipo === 'REP') && account && account.toLowerCase() !== artist.toLowerCase();
 
-  // URLs de SoundCloud del artista y de la cuenta (extraídas del URL del track)
+  // URL de SoundCloud del artista (extraída de la URL del track)
   const artistUrl = 'https://soundcloud.com/' + scUsername(t.u);
-  // Para la cuenta que reposteó no tenemos URL directa; usamos su nombre como username
-  const accountUrl = 'https://soundcloud.com/' + encodeURIComponent(account.toLowerCase().replace(/\s+/g, '-'));
+
+  // Badge UP/REP con color según tipo (informativo, no clickeable)
+  const tipoBadge = t.tipo === 'UP' ? '<span class="badge tipo-up">UP</span>'
+    : t.tipo === 'REP' ? '<span class="badge tipo-rep">REP</span>'
+    : '';
 
   let whoHTML = '';
   if (isRepost) {
+    // "Cuenta [REP] → Artista"
     whoHTML = `
       <div class="who">
-        <span class="name reposter" data-account-url="${esc(accountUrl)}">${esc(account)}</span>
-        <span class="sep">reposteó →</span>
+        <span class="name reposter" data-account="${esc(account)}">${esc(account)}</span>
+        ${tipoBadge}
+        <span class="sep">→</span>
         <span class="name" data-artist-url="${esc(artistUrl)}">${esc(artist)}</span>
       </div>`;
   } else if (artist) {
+    // "Artista [UP]"
     whoHTML = `
       <div class="who">
         <span class="name" data-artist-url="${esc(artistUrl)}">${esc(artist)}</span>
+        ${tipoBadge}
       </div>`;
   }
 
@@ -471,11 +392,6 @@ function cardHTML(t){
       dlBadge = '<span class="badge dl-badge">' + esc(t.dl) + '</span>';
     }
   }
-
-  // Badge UP/REP con color distinto según tipo (informativo, no clickeable)
-  const tipoBadge = t.tipo === 'UP' ? '<span class="badge tipo-up">UP</span>'
-    : t.tipo === 'REP' ? '<span class="badge tipo-rep">REP</span>'
-    : '';
 
   // Player inline si es el track activo
   const isPlaying = t.u === currentPlayingUrl;
@@ -495,7 +411,6 @@ function cardHTML(t){
         ${t.dur ? '<span>' + t.dur + 'min</span>' : ''}
         ${t.g && t.g !== '-' ? '<span>' + esc(t.g) + '</span>' : ''}
         ${dlBadge}
-        ${tipoBadge}
       </div>
       ${stateBadge ? '<div class="badges">' + stateBadge + '</div>' : ''}
       <div class="actions">
@@ -503,6 +418,7 @@ function cardHTML(t){
         ${isPlaying ? '<button class="btn seek" data-seek="30">0:30</button>' : ''}
         ${isPlaying ? '<button class="btn seek" data-seek="60">1:00</button>' : ''}
         ${isPlaying ? '<button class="btn seek" data-seek="120">2:00</button>' : ''}
+        <div class="row-break"></div>
         <button class="btn mark g ${s === 'g' ? 'on' : ''}" data-mark="${t.id}|g">❤</button>
         <button class="btn mark x ${s === 'x' ? 'on' : ''}" data-mark="${t.id}|x">✕</button>
       </div>
