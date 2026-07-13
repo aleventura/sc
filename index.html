@@ -65,9 +65,8 @@
   .badge{font-size:11px;padding:2px 6px;border-radius:6px;background:var(--btn);color:var(--dim)}
   .badge.state-g{background:rgba(62,207,142,.16);color:var(--ok)}
   .badge.state-x{background:rgba(224,90,90,.16);color:var(--no)}
-  .badge.dl-badge{background:var(--acc);color:#fff;text-decoration:none;cursor:pointer;
-    padding:2px 8px;font-weight:600}
-  .badge.dl-badge:active{opacity:.7}
+  .who .dl-link{color:var(--acc2);text-decoration:underline;font-size:13px;margin-left:4px}
+  .who .dl-link:active{opacity:.7}
   .badge.tipo-up{background:rgba(62,207,142,.16);color:var(--ok);border:1px solid var(--ok);font-weight:700;font-size:10px;padding:1px 6px;letter-spacing:.5px}
   .badge.tipo-rep{background:rgba(78,161,255,.16);color:var(--acc2);border:1px solid var(--acc2);font-weight:700;font-size:10px;padding:1px 6px;letter-spacing:.5px}
   .actions{display:flex;gap:6px;margin-top:6px;flex-wrap:wrap}
@@ -154,31 +153,58 @@ function schedulePush(){
 function pushState(){
   if (SYNC_URL.startsWith('REPLACE')) return; // no configurado
   if (DEV_MODE) { setSync('ok', 'DEV: push omitido'); return; }
-  try {
-    fetch(SYNC_URL, {
-      method: 'POST',
-      mode: 'no-cors',
-      body: new URLSearchParams({ data: JSON.stringify(st) })
+  // Content-Type text/plain evita el preflight CORS (patrón conocido para Apps Script).
+  // El Apps Script parsea el body como form-urlencoded desde postData.contents.
+  fetch(SYNC_URL, {
+    method: 'POST',
+    headers: {'Content-Type': 'text/plain;charset=utf-8'},
+    body: 'data=' + encodeURIComponent(JSON.stringify(st))
+  })
+    .then(r => {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.json();
+    })
+    .then(res => {
+      if (res && res.ok) {
+        setSync('ok', 'Sync ' + new Date().toLocaleTimeString() + ' (' + (res.count || 0) + ')');
+      } else {
+        setSync('err', 'Sync respondió: ' + JSON.stringify(res));
+      }
+    })
+    .catch(e => {
+      setSync('err', 'Error sync: ' + e.message);
     });
-    setSync('ok', 'Sync ' + new Date().toLocaleTimeString());
-  } catch(e) {
-    setSync('err', 'Error sync: ' + e.message);
-  }
 }
 
 function pullState(){
   if (SYNC_URL.startsWith('REPLACE')) return;
   if (DEV_MODE) return; // no traer marcas reales al testear
   fetch(SYNC_URL)
-    .then(r => r.json())
-    .then(data => {
-      if (data && typeof data === 'object') {
-        st = data;
-        localStorage.setItem(LS, JSON.stringify(st));
-        if (typeof render === 'function') render();
-      }
+    .then(r => {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.json();
     })
-    .catch(() => {});
+    .then(remote => {
+      if (!remote || typeof remote !== 'object') return;
+      // MERGE seguro: no sobreescribir localStorage con lo remoto si local tiene más.
+      // La primera vez esto rescata los 12 guardados del iPhone que estaban solo en local.
+      const localKeys = Object.keys(st).length;
+      const remoteKeys = Object.keys(remote).length;
+      if (remoteKeys >= localKeys) {
+        st = remote;
+      } else {
+        // Local tiene más marcas: mergear, dando prioridad a las locales
+        st = Object.assign({}, remote, st);
+        // Y hacer push para propagar los faltantes al Sheet
+        schedulePush();
+      }
+      localStorage.setItem(LS, JSON.stringify(st));
+      if (typeof render === 'function') render();
+      setSync('ok', 'Cargado ' + Object.keys(st).length + ' marcas');
+    })
+    .catch(e => {
+      setSync('err', 'Error pull: ' + e.message);
+    });
 }
 
 function save(){
@@ -364,33 +390,30 @@ function cardHTML(t){
     : t.tipo === 'REP' ? '<span class="badge tipo-rep">REP</span>'
     : '';
 
+  // Link de descarga: hipervínculo simple "link" al lado del artista
+  const dlLink = t.dlu
+    ? '<a class="dl-link" href="' + esc(t.dlu) + '" target="_blank" rel="noopener">link</a>'
+    : '';
+
   let whoHTML = '';
   if (isRepost) {
-    // "Cuenta [REP] → Artista"
+    // "Cuenta [REP] → Artista link"
     whoHTML = `
       <div class="who">
         <span class="name reposter" data-account="${esc(account)}">${esc(account)}</span>
         ${tipoBadge}
         <span class="sep">→</span>
         <span class="name" data-artist-url="${esc(artistUrl)}">${esc(artist)}</span>
+        ${dlLink}
       </div>`;
   } else if (artist) {
-    // "Artista [UP]"
+    // "Artista [UP] link"
     whoHTML = `
       <div class="who">
         <span class="name" data-artist-url="${esc(artistUrl)}">${esc(artist)}</span>
         ${tipoBadge}
+        ${dlLink}
       </div>`;
-  }
-
-  // Badge de descarga (solo texto, sin ícono, clickeable si hay link)
-  let dlBadge = '';
-  if (t.dl && t.dl !== 'ninguna') {
-    if (t.dlu) {
-      dlBadge = '<a class="badge dl-badge" href="' + esc(t.dlu) + '" target="_blank" rel="noopener">' + esc(t.dl) + '</a>';
-    } else {
-      dlBadge = '<span class="badge dl-badge">' + esc(t.dl) + '</span>';
-    }
   }
 
   // Player inline si es el track activo
@@ -410,7 +433,6 @@ function cardHTML(t){
         <span>💬 ${fmt(t.c)}</span>
         ${t.dur ? '<span>' + t.dur + 'min</span>' : ''}
         ${t.g && t.g !== '-' ? '<span>' + esc(t.g) + '</span>' : ''}
-        ${dlBadge}
       </div>
       ${stateBadge ? '<div class="badges">' + stateBadge + '</div>' : ''}
       <div class="actions">
@@ -418,9 +440,9 @@ function cardHTML(t){
         ${isPlaying ? '<button class="btn seek" data-seek="30">0:30</button>' : ''}
         ${isPlaying ? '<button class="btn seek" data-seek="60">1:00</button>' : ''}
         ${isPlaying ? '<button class="btn seek" data-seek="120">2:00</button>' : ''}
-        <div class="row-break"></div>
-        <button class="btn mark g ${s === 'g' ? 'on' : ''}" data-mark="${t.id}|g">❤</button>
-        <button class="btn mark x ${s === 'x' ? 'on' : ''}" data-mark="${t.id}|x">✕</button>
+        ${isPlaying ? '<div class="row-break"></div>' : ''}
+        ${isPlaying ? '<button class="btn mark g ' + (s === 'g' ? 'on' : '') + '" data-mark="' + t.id + '|g">❤</button>' : ''}
+        ${isPlaying ? '<button class="btn mark x ' + (s === 'x' ? 'on' : '') + '" data-mark="' + t.id + '|x">✕</button>' : ''}
       </div>
       ${playerHTML}
     </div>
