@@ -99,7 +99,8 @@
     <button class="chip" data-state="descartados">✕ Descartados</button>
   </div>
   <div class="filters" id="sortFilters">
-    <button class="chip sec active" data-sort="fecha">Fecha ↓</button>
+    <button class="chip sec active" data-sort="fecha">SC ↓</button>
+    <button class="chip sec" data-sort="added">Agregado ↓</button>
     <button class="chip sec" data-sort="reposts">Reposts ↓</button>
     <button class="chip sec" data-sort="comments">Comments ↓</button>
   </div>
@@ -249,7 +250,8 @@ function passesFilter(t){
 function sortFn(a, b){
   if (sortBy === 'reposts') return (b.r || 0) - (a.r || 0);
   if (sortBy === 'comments') return (b.c || 0) - (a.c || 0);
-  // fecha desc por default
+  if (sortBy === 'added') return (b.added || '').localeCompare(a.added || '');
+  // fecha (SC) desc por default
   return (b.d || '').localeCompare(a.d || '');
 }
 
@@ -429,6 +431,7 @@ function cardHTML(t){
       ${whoHTML}
       <div class="meta">
         <span>${esc(t.d)}</span>
+        ${t.added ? '<span title="Agregado al catálogo">+ ' + esc(t.added) + '</span>' : ''}
         <span>♻ ${fmt(t.r)}</span>
         <span>💬 ${fmt(t.c)}</span>
         ${t.dur ? '<span>' + t.dur + 'min</span>' : ''}
