@@ -42,21 +42,25 @@
   .who .name:active{background:var(--btn-hover);border-color:var(--acc2)}
   .who .name.reposter{color:var(--acc2)}
   .who .sep{color:var(--dim);font-size:11px}
-  .active-filters{display:flex;gap:8px;flex-wrap:wrap;padding:6px 10px;align-items:center}
+  .active-filters{display:flex;gap:8px;flex-wrap:wrap;padding:6px 10px;align-items:center;
+    justify-content:space-between}
   .active-filter{background:var(--acc2);color:#fff;font-size:14px;padding:8px 12px;
     border-radius:8px;display:inline-flex;gap:8px;align-items:center;cursor:pointer;
-    font-weight:600;line-height:1.2}
+    font-weight:600;line-height:1.2;flex-direction:row-reverse}
   .active-filter .clear-x{background:rgba(0,0,0,.25);border-radius:50%;width:22px;height:22px;
     display:inline-flex;align-items:center;justify-content:center;font-size:14px;
-    font-weight:700;margin-left:2px}
+    font-weight:700;margin-right:2px}
   .active-filter:active{opacity:.7}
   .search-row{display:flex;gap:6px;padding:6px 10px 0}
   .search-input{flex:1 1 0;min-width:0;background:var(--btn);border:1px solid var(--border);
-    border-radius:8px;color:var(--fg);font-size:13px;padding:6px 8px;outline:none;
-    width:100%;-webkit-appearance:none}
+    border-radius:8px;color:var(--fg);font-size:15px;padding:10px 12px;outline:none;
+    width:100%;-webkit-appearance:none;appearance:none}
+  select.search-input{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%238a8a92' d='M6 8L0 0h12z'/%3E%3C/svg%3E");
+    background-repeat:no-repeat;background-position:right 12px center;padding-right:32px}
   .search-input:focus{border-color:var(--acc2)}
+  .search-input::placeholder{font-size:14px;color:var(--dim)}
   .bulk-btn{background:var(--no);color:#fff;border:1px solid var(--no);border-radius:8px;
-    padding:6px 12px;font-size:12px;font-weight:600;cursor:pointer;margin-left:auto}
+    padding:8px 14px;font-size:14px;font-weight:600;cursor:pointer;line-height:1.2}
   .bulk-btn:active{opacity:.7}
   .badges{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px}
   .badge{font-size:11px;padding:2px 6px;border-radius:6px;background:var(--btn);color:var(--dim)}
@@ -65,7 +69,8 @@
   .badge.dl-badge{background:var(--acc);color:#fff;text-decoration:none;cursor:pointer;
     padding:2px 8px;font-weight:600}
   .badge.dl-badge:active{opacity:.7}
-  .badge.tipo{background:transparent;border:1px solid var(--border)}
+  .badge.tipo-up{background:rgba(62,207,142,.16);color:var(--ok);border:1px solid var(--ok);font-weight:700}
+  .badge.tipo-rep{background:rgba(78,161,255,.16);color:var(--acc2);border:1px solid var(--acc2);font-weight:700}
   .actions{display:flex;gap:6px;margin-top:6px;flex-wrap:wrap}
   .btn{flex:1;padding:8px 6px;background:var(--btn);border:1px solid var(--border);
     border-radius:8px;color:var(--fg);font-size:13px;cursor:pointer;font-weight:500}
@@ -74,6 +79,7 @@
   .btn.play.playing{background:var(--btn);border-color:var(--acc);color:var(--acc)}
   .btn.next{flex:0 0 auto;padding:8px 14px;background:var(--acc);border-color:var(--acc);color:#fff;font-weight:700}
   .btn.seek{flex:0 0 auto;padding:8px 10px;background:var(--btn);border-color:var(--acc);color:var(--acc);font-weight:600;font-size:12px;min-width:52px}
+  .btn.mark{padding:20px 6px;font-size:18px}
   .btn.g.on{background:var(--ok);border-color:var(--ok);color:#0e0e10}
   .btn.x.on{background:var(--no);border-color:var(--no);color:#fff}
   .inline-player{margin-top:8px;border-radius:8px;overflow:hidden}
@@ -99,8 +105,9 @@
     <button class="chip sec" data-sort="comments">Comments ↓</button>
   </div>
   <div class="search-row">
-    <input type="text" class="search-input" id="searchArtist" placeholder="🎤 Buscar artista..." autocomplete="off">
-    <input type="text" class="search-input" id="searchAccount" placeholder="👤 Buscar cuenta..." autocomplete="off">
+    <select class="search-input" id="selectAccount">
+      <option value="">👤 Todas las cuentas</option>
+    </select>
   </div>
   <div class="active-filters" id="activeFilters"></div>
   <div class="sync" id="sync"></div>
@@ -215,8 +222,7 @@ let st = JSON.parse(localStorage.getItem(LS) || '{}');
 // st = { <trackId>: 'g' | 'x' }
 
 let filterState = 'nuevos';
-let filterArtist = null;   // nombre exacto o null
-let filterAccount = null;  // nombre exacto o null
+let filterAccount = null;  // cuenta seleccionada del dropdown o null
 let sortBy = 'fecha';
 let currentPlayingUrl = null;  // track cuyo widget está abierto (o null)
 let filteredTracks = [];       // lista visible actual (para playNext)
@@ -296,8 +302,7 @@ function passesFilter(t){
   if (filterState === 'descartados' && s !== 'x') return false;
   // todos: pasa
 
-  if (filterArtist && !(t.a || '').toLowerCase().includes(filterArtist.toLowerCase())) return false;
-  if (filterAccount && !(t.cta || '').toLowerCase().includes(filterAccount.toLowerCase())) return false;
+  if (filterAccount && (t.cta || '') !== filterAccount) return false;
   return true;
 }
 
@@ -335,18 +340,14 @@ function render(){
         setState(id, s);
       });
     });
-    list.querySelectorAll('[data-artist]').forEach(el => {
+    list.querySelectorAll('[data-artist-url]').forEach(el => {
       el.addEventListener('click', () => {
-        filterArtist = el.dataset.artist;
-        document.getElementById('searchArtist').value = filterArtist;
-        render();
+        window.open(el.dataset.artistUrl, '_blank', 'noopener');
       });
     });
-    list.querySelectorAll('[data-account]').forEach(el => {
+    list.querySelectorAll('[data-account-url]').forEach(el => {
       el.addEventListener('click', () => {
-        filterAccount = el.dataset.account;
-        document.getElementById('searchAccount').value = filterAccount;
-        render();
+        window.open(el.dataset.accountUrl, '_blank', 'noopener');
       });
     });
 
@@ -364,35 +365,26 @@ function render(){
     }
   }
 
-  // Filtros activos (artista/cuenta) — chips removibles + botón bulk-descartar
+  // Filtros activos (cuenta) — chip removible + botón bulk-descartar
   const af = document.getElementById('activeFilters');
   const chips = [];
-  if (filterArtist) {
-    chips.push('<span class="active-filter" data-clear="artist">Artista: ' + esc(filterArtist) + '<span class="clear-x">✕</span></span>');
-  }
   if (filterAccount) {
     chips.push('<span class="active-filter" data-clear="account">Cuenta: ' + esc(filterAccount) + '<span class="clear-x">✕</span></span>');
   }
 
-  // Botón bulk-descartar: aparece si hay CUALQUIER filtro activo (para no descartar todo el catálogo por accidente)
-  // Sin "Todos", filterState siempre es nuevos/guardados/descartados => siempre hay filtro de estado.
-  // Mostrar el botón bulk solo si hay filtro adicional (artista/cuenta) para evitar descartar todos los "Nuevos" por accidente.
-  const hasFilter = filterArtist || filterAccount;
+  // Botón bulk-descartar: aparece si hay filtro por cuenta activo (para no descartar todos los "Nuevos" por accidente)
+  const hasFilter = filterAccount;
   const notAlreadyDescartados = filterState !== 'descartados'; // no tiene sentido descartar los ya descartados
   if (hasFilter && notAlreadyDescartados && filtered.length > 0) {
-    chips.push('<button class="bulk-btn" data-bulk="x">✕ Descartar ' + filtered.length + ' visibles</button>');
+    chips.push('<button class="bulk-btn" data-bulk="x">Descartar ' + fmt(filtered.length) + ' visibles ✕</button>');
   }
 
   af.innerHTML = chips.join('');
   af.querySelectorAll('[data-clear]').forEach(el => {
     el.addEventListener('click', () => {
-      if (el.dataset.clear === 'artist') {
-        filterArtist = null;
-        document.getElementById('searchArtist').value = '';
-      }
       if (el.dataset.clear === 'account') {
         filterAccount = null;
-        document.getElementById('searchAccount').value = '';
+        document.getElementById('selectAccount').value = '';
       }
       render();
     });
@@ -400,11 +392,8 @@ function render(){
   af.querySelectorAll('[data-bulk]').forEach(el => {
     el.addEventListener('click', () => {
       const n = filtered.length;
-      const contextParts = [];
-      if (filterArtist) contextParts.push('Artista: ' + filterArtist);
-      if (filterAccount) contextParts.push('Cuenta: ' + filterAccount);
-      const context = contextParts.length ? '\n\nFiltro activo:\n  ' + contextParts.join('\n  ') : '';
-      const msg = '¿Descartar ' + n + ' tracks?' + context + '\n\nEsta acción se puede revertir uno por uno desde la vista "Descartados".';
+      const context = filterAccount ? '\n\nFiltro activo:\n  Cuenta: ' + filterAccount : '';
+      const msg = '¿Descartar ' + fmt(n) + ' tracks?' + context + '\n\nEsta acción se puede revertir uno por uno desde la vista "Descartados".';
       if (!confirm(msg)) return;
       filtered.forEach(t => { st[t.id] = 'x'; });
       save();
@@ -418,7 +407,21 @@ function render(){
   const gs = TRACKS.filter(t => getState(t.id) === 'g').length;
   const xs = TRACKS.filter(t => getState(t.id) === 'x').length;
   document.getElementById('stats').textContent =
-    filtered.length + ' / ' + total + ' tracks · Nuevos: ' + nvos + ' · ❤ ' + gs + ' · ✕ ' + xs;
+    fmt(filtered.length) + ' / ' + fmt(total) + ' tracks · Nuevos: ' + fmt(nvos) + ' · ❤ ' + fmt(gs) + ' · ✕ ' + fmt(xs);
+}
+
+function fmt(n){
+  // Formato con puntos como separador de miles (ej: 3421 -> 3.421)
+  if (n === null || n === undefined || n === '') return '0';
+  return Number(n).toLocaleString('es-CL');
+}
+
+function scUsername(url){
+  // Extrae el username de una URL de SoundCloud
+  // https://soundcloud.com/djchrisstussy/algo -> djchrisstussy
+  if (!url) return '';
+  const m = url.match(/soundcloud\.com\/([^\/\?#]+)/);
+  return m ? m[1] : '';
 }
 
 function esc(s){
@@ -437,33 +440,40 @@ function cardHTML(t){
   const account = t.cta || '';
   const isRepost = (t.tipo === 'REP') && account && account.toLowerCase() !== artist.toLowerCase();
 
+  // URLs de SoundCloud del artista y de la cuenta (extraídas del URL del track)
+  const artistUrl = 'https://soundcloud.com/' + scUsername(t.u);
+  // Para la cuenta que reposteó no tenemos URL directa; usamos su nombre como username
+  const accountUrl = 'https://soundcloud.com/' + encodeURIComponent(account.toLowerCase().replace(/\s+/g, '-'));
+
   let whoHTML = '';
   if (isRepost) {
     whoHTML = `
       <div class="who">
-        <span class="name reposter" data-account="${esc(account)}">${esc(account)}</span>
+        <span class="name reposter" data-account-url="${esc(accountUrl)}">${esc(account)}</span>
         <span class="sep">reposteó →</span>
-        <span class="name" data-artist="${esc(artist)}">${esc(artist)}</span>
+        <span class="name" data-artist-url="${esc(artistUrl)}">${esc(artist)}</span>
       </div>`;
   } else if (artist) {
     whoHTML = `
       <div class="who">
-        <span class="name" data-artist="${esc(artist)}">${esc(artist)}</span>
+        <span class="name" data-artist-url="${esc(artistUrl)}">${esc(artist)}</span>
       </div>`;
   }
 
-  // Badge de descarga (clickeable si hay link)
+  // Badge de descarga (solo texto, sin ícono, clickeable si hay link)
   let dlBadge = '';
   if (t.dl && t.dl !== 'ninguna') {
     if (t.dlu) {
-      dlBadge = '<a class="badge dl-badge" href="' + esc(t.dlu) + '" target="_blank" rel="noopener">⬇ ' + esc(t.dl) + '</a>';
+      dlBadge = '<a class="badge dl-badge" href="' + esc(t.dlu) + '" target="_blank" rel="noopener">' + esc(t.dl) + '</a>';
     } else {
       dlBadge = '<span class="badge dl-badge">' + esc(t.dl) + '</span>';
     }
   }
 
-  // Badge de tipo (UP/REP) informativo
-  const tipoBadge = t.tipo ? '<span class="badge tipo">' + esc(t.tipo) + '</span>' : '';
+  // Badge UP/REP con color distinto según tipo (informativo, no clickeable)
+  const tipoBadge = t.tipo === 'UP' ? '<span class="badge tipo-up">UP</span>'
+    : t.tipo === 'REP' ? '<span class="badge tipo-rep">REP</span>'
+    : '';
 
   // Player inline si es el track activo
   const isPlaying = t.u === currentPlayingUrl;
@@ -478,8 +488,8 @@ function cardHTML(t){
       ${whoHTML}
       <div class="meta">
         <span>${esc(t.d)}</span>
-        <span>♻ ${t.r || 0}</span>
-        <span>💬 ${t.c || 0}</span>
+        <span>♻ ${fmt(t.r)}</span>
+        <span>💬 ${fmt(t.c)}</span>
         ${t.dur ? '<span>' + t.dur + 'min</span>' : ''}
         ${t.g && t.g !== '-' ? '<span>' + esc(t.g) + '</span>' : ''}
         ${dlBadge}
@@ -493,8 +503,8 @@ function cardHTML(t){
         ${isPlaying ? '<button class="btn seek" data-seek="60">1:00</button>' : ''}
         ${isPlaying ? '<button class="btn seek" data-seek="90">1:30</button>' : ''}
         ${isPlaying ? '<button class="btn seek" data-seek="120">2:00</button>' : ''}
-        <button class="btn g ${s === 'g' ? 'on' : ''}" data-mark="${t.id}|g">❤</button>
-        <button class="btn x ${s === 'x' ? 'on' : ''}" data-mark="${t.id}|x">✕</button>
+        <button class="btn mark g ${s === 'g' ? 'on' : ''}" data-mark="${t.id}|g">❤</button>
+        <button class="btn mark x ${s === 'x' ? 'on' : ''}" data-mark="${t.id}|x">✕</button>
       </div>
       ${playerHTML}
     </div>
@@ -596,34 +606,39 @@ document.getElementById('sortFilters').addEventListener('click', e => {
   render();
 });
 
-// Inputs de busqueda con debounce corto
-let searchDebounce = null;
-function onSearch(){
-  clearTimeout(searchDebounce);
-  searchDebounce = setTimeout(() => {
-    filterArtist = document.getElementById('searchArtist').value.trim() || null;
-    filterAccount = document.getElementById('searchAccount').value.trim() || null;
-    render();
-  }, 150);
+// Listener del selector de cuenta
+document.getElementById('selectAccount').addEventListener('change', e => {
+  filterAccount = e.target.value || null;
+  render();
+});
+
+// Puebla el <select> con las cuentas únicas del catálogo (orden alfabético)
+function populateAccountsDropdown(){
+  const accounts = [...new Set(TRACKS.map(t => t.cta).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'es'));
+  const select = document.getElementById('selectAccount');
+  const current = select.value;
+  select.innerHTML = '<option value="">👤 Todas las cuentas</option>' +
+    accounts.map(a => '<option value="' + esc(a) + '">' + esc(a) + '</option>').join('');
+  select.value = current;
 }
-document.getElementById('searchArtist').addEventListener('input', onSearch);
-document.getElementById('searchAccount').addEventListener('input', onSearch);
 
 // ============================================================
 // INIT
 // ============================================================
 if (DEV_MODE) {
   TRACKS = DEV_TRACKS;
+  populateAccountsDropdown();
   render();
-  pullState(); // trae marcas del Sheet si hay
+  pullState();
   setSync('ok', 'DEV_MODE: usando tracks de ejemplo');
 } else {
   fetch(TRACKS_URL)
     .then(r => r.json())
     .then(payload => {
       TRACKS = (payload && payload.t) ? payload.t : (Array.isArray(payload) ? payload : []);
+      populateAccountsDropdown();
       render();
-      pullState(); // trae marcas del Sheet si hay
+      pullState();
     })
     .catch(err => {
       document.getElementById('list').innerHTML =
