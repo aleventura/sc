@@ -35,10 +35,26 @@
   .meta{display:flex;gap:10px;flex-wrap:wrap;font-size:12px;color:var(--dim);margin-bottom:6px}
   .meta .a{color:var(--fg)}
   .meta .dl{color:var(--acc)}
+  .who{display:flex;gap:4px;align-items:center;flex-wrap:wrap;font-size:12px;margin-bottom:6px}
+  .who .name{color:var(--fg);cursor:pointer;padding:2px 6px;background:var(--btn);
+    border-radius:4px;border:1px solid transparent}
+  .who .name:active{background:var(--btn-hover);border-color:var(--acc2)}
+  .who .name.reposter{color:var(--acc2)}
+  .who .sep{color:var(--dim);font-size:11px}
+  .active-filters{display:flex;gap:6px;flex-wrap:wrap;padding:4px 10px;align-items:center}
+  .active-filter{background:var(--acc2);color:#fff;font-size:12px;padding:4px 8px;
+    border-radius:6px;display:inline-flex;gap:6px;align-items:center;cursor:pointer}
+  .active-filter:active{opacity:.7}
+  .search-row{display:flex;gap:6px;padding:6px 10px 0}
+  .search-input{flex:1;background:var(--btn);border:1px solid var(--border);border-radius:8px;
+    color:var(--fg);font-size:13px;padding:6px 8px;outline:none}
+  .search-input:focus{border-color:var(--acc2)}
+  .bulk-btn{background:var(--no);color:#fff;border:1px solid var(--no);border-radius:8px;
+    padding:6px 12px;font-size:12px;font-weight:600;cursor:pointer;margin-left:auto}
+  .bulk-btn:active{opacity:.7}
   .badges{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px}
   .badge{font-size:11px;padding:2px 6px;border-radius:6px;background:var(--btn);color:var(--dim)}
   .badge.state-g{background:rgba(62,207,142,.16);color:var(--ok)}
-  .badge.state-e{background:rgba(78,161,255,.16);color:var(--acc2)}
   .badge.state-x{background:rgba(224,90,90,.16);color:var(--no)}
   .actions{display:flex;gap:6px;margin-top:6px}
   .btn{flex:1;padding:8px 6px;background:var(--btn);border:1px solid var(--border);
@@ -46,7 +62,6 @@
   .btn:active{background:var(--btn-hover)}
   .btn.play{background:var(--acc);border-color:var(--acc);color:#fff}
   .btn.g.on{background:var(--ok);border-color:var(--ok);color:#0e0e10}
-  .btn.e.on{background:var(--acc2);border-color:var(--acc2);color:#fff}
   .btn.x.on{background:var(--no);border-color:var(--no);color:#fff}
   .dl-link{color:var(--acc);text-decoration:none;font-size:12px}
   .dl-link:active{opacity:.7}
@@ -73,24 +88,18 @@
   <div class="filters" id="stateFilters">
     <button class="chip active" data-state="nuevos">✨ Nuevos</button>
     <button class="chip" data-state="guardados">❤ Guardados</button>
-    <button class="chip" data-state="escuchados">👁 Escuchados</button>
     <button class="chip" data-state="descartados">✕ Descartados</button>
-    <button class="chip" data-state="todos">Todos</button>
-  </div>
-  <div class="filters" id="dlFilters">
-    <button class="chip sec active" data-dl="all">Toda descarga</button>
-    <button class="chip sec" data-dl="directa">directa</button>
-    <button class="chip sec" data-dl="hypeddit">hypeddit</button>
-    <button class="chip sec" data-dl="bandcamp">bandcamp</button>
-    <button class="chip sec" data-dl="fanlink">fanlink</button>
-    <button class="chip sec" data-dl="purchase_link">purchase_link</button>
-    <button class="chip sec" data-dl="free_dl_mencion">free_dl_mencion</button>
   </div>
   <div class="filters" id="sortFilters">
     <button class="chip sec active" data-sort="fecha">Fecha ↓</button>
     <button class="chip sec" data-sort="reposts">Reposts ↓</button>
     <button class="chip sec" data-sort="comments">Comments ↓</button>
   </div>
+  <div class="search-row">
+    <input type="text" class="search-input" id="searchArtist" placeholder="🎤 Buscar artista..." autocomplete="off">
+    <input type="text" class="search-input" id="searchAccount" placeholder="👤 Buscar cuenta..." autocomplete="off">
+  </div>
+  <div class="active-filters" id="activeFilters"></div>
   <div class="sync" id="sync"></div>
 </header>
 
@@ -118,10 +127,11 @@ const LS = 'sc_tracks_state_v1';
 // ============================================================
 let TRACKS = [];
 let st = JSON.parse(localStorage.getItem(LS) || '{}');
-// st = { <trackId>: 'g' | 'e' | 'x' }
+// st = { <trackId>: 'g' | 'x' }
 
 let filterState = 'nuevos';
-let filterDL = 'all';
+let filterArtist = null;   // nombre exacto o null
+let filterAccount = null;  // nombre exacto o null
 let sortBy = 'fecha';
 
 // ============================================================
@@ -193,11 +203,11 @@ function passesFilter(t){
   const s = getState(t.id);
   if (filterState === 'nuevos' && s) return false;
   if (filterState === 'guardados' && s !== 'g') return false;
-  if (filterState === 'escuchados' && s !== 'e') return false;
   if (filterState === 'descartados' && s !== 'x') return false;
   // todos: pasa
 
-  if (filterDL !== 'all' && (t.dl || '') !== filterDL) return false;
+  if (filterArtist && !(t.a || '').toLowerCase().includes(filterArtist.toLowerCase())) return false;
+  if (filterAccount && !(t.cta || '').toLowerCase().includes(filterAccount.toLowerCase())) return false;
   return true;
 }
 
@@ -228,16 +238,72 @@ function render(){
         setState(id, s);
       });
     });
+    list.querySelectorAll('[data-artist]').forEach(el => {
+      el.addEventListener('click', () => {
+        filterArtist = el.dataset.artist;
+        document.getElementById('searchArtist').value = filterArtist;
+        render();
+      });
+    });
+    list.querySelectorAll('[data-account]').forEach(el => {
+      el.addEventListener('click', () => {
+        filterAccount = el.dataset.account;
+        document.getElementById('searchAccount').value = filterAccount;
+        render();
+      });
+    });
   }
 
-  // Stats
+  // Filtros activos (artista/cuenta) — chips removibles + botón bulk-descartar
+  const af = document.getElementById('activeFilters');
+  const chips = [];
+  if (filterArtist) {
+    chips.push('<span class="active-filter" data-clear="artist">Artista: ' + esc(filterArtist) + ' ✕</span>');
+  }
+  if (filterAccount) {
+    chips.push('<span class="active-filter" data-clear="account">Cuenta: ' + esc(filterAccount) + ' ✕</span>');
+  }
+
+  // Botón bulk-descartar: aparece si hay CUALQUIER filtro activo (para no descartar todo el catálogo por accidente)
+  // Sin "Todos", filterState siempre es nuevos/guardados/descartados => siempre hay filtro de estado.
+  // Mostrar el botón bulk solo si hay filtro adicional (artista/cuenta) para evitar descartar todos los "Nuevos" por accidente.
+  const hasFilter = filterArtist || filterAccount;
+  const notAlreadyDescartados = filterState !== 'descartados'; // no tiene sentido descartar los ya descartados
+  if (hasFilter && notAlreadyDescartados && filtered.length > 0) {
+    chips.push('<button class="bulk-btn" data-bulk="x">✕ Descartar ' + filtered.length + ' visibles</button>');
+  }
+
+  af.innerHTML = chips.join('');
+  af.querySelectorAll('[data-clear]').forEach(el => {
+    el.addEventListener('click', () => {
+      if (el.dataset.clear === 'artist') {
+        filterArtist = null;
+        document.getElementById('searchArtist').value = '';
+      }
+      if (el.dataset.clear === 'account') {
+        filterAccount = null;
+        document.getElementById('searchAccount').value = '';
+      }
+      render();
+    });
+  });
+  af.querySelectorAll('[data-bulk]').forEach(el => {
+    el.addEventListener('click', () => {
+      const n = filtered.length;
+      if (!confirm('¿Marcar como Descartados los ' + n + ' tracks visibles? (esta acción se puede revertir uno por uno)')) return;
+      filtered.forEach(t => { st[t.id] = 'x'; });
+      save();
+      render();
+    });
+  });
+
+  // Stats: cantidad visible con el filtro actual + totales globales por estado
   const total = TRACKS.length;
   const nvos = TRACKS.filter(t => !getState(t.id)).length;
   const gs = TRACKS.filter(t => getState(t.id) === 'g').length;
-  const es = TRACKS.filter(t => getState(t.id) === 'e').length;
   const xs = TRACKS.filter(t => getState(t.id) === 'x').length;
   document.getElementById('stats').textContent =
-    total + ' tracks · Nuevos: ' + nvos + ' · ❤ ' + gs + ' · 👁 ' + es + ' · ✕ ' + xs;
+    filtered.length + ' / ' + total + ' tracks · Nuevos: ' + nvos + ' · ❤ ' + gs + ' · ✕ ' + xs;
 }
 
 function esc(s){
@@ -248,15 +314,34 @@ function esc(s){
 function cardHTML(t){
   const s = getState(t.id);
   const stateBadge = s === 'g' ? '<span class="badge state-g">❤ Guardado</span>'
-    : s === 'e' ? '<span class="badge state-e">👁 Escuchado</span>'
     : s === 'x' ? '<span class="badge state-x">✕ Descartado</span>'
     : '';
+
+  // Fila de quien: si REP y cuenta != artista, mostrar "Cuenta → Artista"
+  const artist = t.a || '';
+  const account = t.cta || '';
+  const isRepost = (t.tipo === 'REP') && account && account.toLowerCase() !== artist.toLowerCase();
+
+  let whoHTML = '';
+  if (isRepost) {
+    whoHTML = `
+      <div class="who">
+        <span class="name reposter" data-account="${esc(account)}">${esc(account)}</span>
+        <span class="sep">reposteó →</span>
+        <span class="name" data-artist="${esc(artist)}">${esc(artist)}</span>
+      </div>`;
+  } else if (artist) {
+    whoHTML = `
+      <div class="who">
+        <span class="name" data-artist="${esc(artist)}">${esc(artist)}</span>
+      </div>`;
+  }
 
   return `
     <div class="card">
       <div class="title">${esc(t.t)}</div>
+      ${whoHTML}
       <div class="meta">
-        <span class="a">${esc(t.a)}</span>
         <span>${esc(t.d)}</span>
         <span>♻ ${t.r || 0}</span>
         <span>💬 ${t.c || 0}</span>
@@ -266,13 +351,11 @@ function cardHTML(t){
       <div class="badges">
         ${stateBadge}
         ${t.dl && t.dl !== 'ninguna' ? '<span class="badge">' + esc(t.dl) + '</span>' : ''}
-        ${t.tipo ? '<span class="badge">' + esc(t.tipo) + '</span>' : ''}
       </div>
       ${t.dlu ? '<a class="dl-link" href="' + esc(t.dlu) + '" target="_blank" rel="noopener">⬇ Link descarga</a>' : ''}
       <div class="actions">
         <button class="btn play" data-play="${esc(t.u)}">▶ Play</button>
         <button class="btn g ${s === 'g' ? 'on' : ''}" data-mark="${t.id}|g">❤</button>
-        <button class="btn e ${s === 'e' ? 'on' : ''}" data-mark="${t.id}|e">👁</button>
         <button class="btn x ${s === 'x' ? 'on' : ''}" data-mark="${t.id}|x">✕</button>
       </div>
     </div>
@@ -319,14 +402,6 @@ document.getElementById('stateFilters').addEventListener('click', e => {
   render();
 });
 
-document.getElementById('dlFilters').addEventListener('click', e => {
-  if (e.target.tagName !== 'BUTTON') return;
-  filterDL = e.target.dataset.dl;
-  document.querySelectorAll('#dlFilters .chip').forEach(c => c.classList.remove('active'));
-  e.target.classList.add('active');
-  render();
-});
-
 document.getElementById('sortFilters').addEventListener('click', e => {
   if (e.target.tagName !== 'BUTTON') return;
   sortBy = e.target.dataset.sort;
@@ -334,6 +409,19 @@ document.getElementById('sortFilters').addEventListener('click', e => {
   e.target.classList.add('active');
   render();
 });
+
+// Inputs de busqueda con debounce corto
+let searchDebounce = null;
+function onSearch(){
+  clearTimeout(searchDebounce);
+  searchDebounce = setTimeout(() => {
+    filterArtist = document.getElementById('searchArtist').value.trim() || null;
+    filterAccount = document.getElementById('searchAccount').value.trim() || null;
+    render();
+  }, 150);
+}
+document.getElementById('searchArtist').addEventListener('input', onSearch);
+document.getElementById('searchAccount').addEventListener('input', onSearch);
 
 // ============================================================
 // INIT
