@@ -26,6 +26,7 @@
     display:flex;align-items:center;justify-content:center;transition:transform .3s ease}
   .toggle-filters.collapsed{transform:rotate(180deg)}
   .filters-collapsible{max-height:500px;overflow:hidden;transition:max-height .35s ease}
+  .filters-collapsible.no-anim{transition:none}
   .filters-collapsible.collapsed{max-height:0}
   .stats{margin-bottom:8px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
   .stats-main{font-size:14px;font-weight:700;color:var(--fg);line-height:1.3;white-space:nowrap}
@@ -349,13 +350,24 @@ function render(){
     const iframe = document.getElementById('scWidget');
     if (iframe && window.SC && window.SC.Widget) {
       scWidget = window.SC.Widget(iframe);
+      let hasStarted = false;      // el widget confirmó que está reproduciendo
+      let retryTimers = [];
+
       scWidget.bind(window.SC.Widget.Events.READY, () => {
-        // Intentar reproducir con reintentos escalonados.
-        // iOS a veces acepta el 2do o 3er intento si el 1ro llega muy pronto.
+        // Intentar reproducir. Reintentos SOLO mientras no haya confirmación de PLAY,
+        // para no togglear a pausa un widget que ya arrancó.
         scWidget.play();
-        setTimeout(() => { if (scWidget) scWidget.play(); }, 150);
-        setTimeout(() => { if (scWidget) scWidget.play(); }, 500);
+        retryTimers.push(setTimeout(() => { if (scWidget && !hasStarted) scWidget.play(); }, 200));
+        retryTimers.push(setTimeout(() => { if (scWidget && !hasStarted) scWidget.play(); }, 600));
       });
+
+      // Cuando el widget confirma que está sonando, cancelar reintentos pendientes
+      scWidget.bind(window.SC.Widget.Events.PLAY, () => {
+        hasStarted = true;
+        retryTimers.forEach(clearTimeout);
+        retryTimers = [];
+      });
+
       scWidget.bind(window.SC.Widget.Events.FINISH, () => {
         playNext();
       });
@@ -626,15 +638,46 @@ document.getElementById('stateFilters').addEventListener('click', e => {
 let autoHideEnabled = true;
 document.getElementById('toggleFilters').addEventListener('click', () => {
   const collapsible = document.getElementById('filtersCollapsible');
-  const btn = document.getElementById('toggleFilters');
-  collapsible.classList.toggle('collapsed');
-  btn.classList.toggle('collapsed');
+  const willCollapse = !collapsible.classList.contains('collapsed');
+  setFiltersCollapsed(willCollapse, true); // animado, sin compensar scroll
   autoHideEnabled = false;
 });
 
 // Auto-hide/show del filtro según dirección del scroll
 let lastScrollY = window.scrollY;
 let scrollTicking = false;
+
+// Colapsa o expande el filtro compensando el scroll para que la lista visible no salte.
+// animate=false hace el cambio instantáneo (para el auto-hide por scroll, así la compensación es exacta).
+function setFiltersCollapsed(collapsed, animate){
+  const collapsible = document.getElementById('filtersCollapsible');
+  const btn = document.getElementById('toggleFilters');
+  const isCollapsed = collapsible.classList.contains('collapsed');
+  if (collapsed === isCollapsed) return; // sin cambios
+
+  const contentHeight = collapsible.scrollHeight;
+
+  if (!animate) collapsible.classList.add('no-anim');
+
+  if (collapsed) {
+    collapsible.classList.add('collapsed');
+    btn.classList.add('collapsed');
+    if (!animate) window.scrollBy(0, -contentHeight);
+  } else {
+    collapsible.classList.remove('collapsed');
+    btn.classList.remove('collapsed');
+    if (!animate) window.scrollBy(0, contentHeight);
+  }
+
+  if (!animate) {
+    // Restaurar la transición después del reflow para futuros usos manuales
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => collapsible.classList.remove('no-anim'));
+    });
+  }
+  lastScrollY = window.scrollY;
+}
+
 function onScroll(){
   if (scrollTicking) return;
   scrollTicking = true;
@@ -642,20 +685,13 @@ function onScroll(){
     if (autoHideEnabled) {
       const currentY = window.scrollY;
       const delta = currentY - lastScrollY;
-      // Umbral de 10px para evitar disparos por bounce/microscroll
       if (Math.abs(delta) > 10) {
-        const collapsible = document.getElementById('filtersCollapsible');
-        const btn = document.getElementById('toggleFilters');
         if (delta > 0 && currentY > 40) {
-          // Bajando: esconder
-          collapsible.classList.add('collapsed');
-          btn.classList.add('collapsed');
+          setFiltersCollapsed(true, false);   // bajando: esconder (instantáneo)
         } else if (delta < 0) {
-          // Subiendo: mostrar
-          collapsible.classList.remove('collapsed');
-          btn.classList.remove('collapsed');
+          setFiltersCollapsed(false, false);  // subiendo: mostrar (instantáneo)
         }
-        lastScrollY = currentY;
+        lastScrollY = window.scrollY;
       }
     }
     scrollTicking = false;
