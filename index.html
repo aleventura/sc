@@ -28,8 +28,11 @@
   .filters-collapsible{max-height:500px;overflow:hidden;transition:max-height .35s ease}
   .filters-collapsible.collapsed{max-height:0}
   .stats{margin-bottom:8px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-  .stats-main{font-size:22px;font-weight:700;color:var(--fg);line-height:1.1;white-space:nowrap}
-  .stats-main .stats-slash{color:var(--dim);font-weight:400;margin:0 4px}
+  .stats-main{font-size:14px;font-weight:700;color:var(--fg);line-height:1.3;white-space:nowrap}
+  .stats-main .stats-slash{color:var(--dim);font-weight:400;margin:0 2px}
+  .stats-sync{font-size:12px;color:var(--dim);white-space:nowrap;margin-left:4px}
+  .stats-sync.err{color:var(--no)}
+  .stats-sync.ok{color:var(--ok)}
   .stats-pills{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
   .stat-pill{font-size:13px;padding:3px 8px;border-radius:6px;background:var(--btn);
     font-weight:600;line-height:1.3;white-space:nowrap}
@@ -124,9 +127,6 @@
   .card:nth-child(-n+40){animation:fade-in .2s ease-out both}
   .card{transition:border-color .2s ease}
   .empty{padding:40px 20px;text-align:center;color:var(--dim)}
-  .sync{font-size:11px;color:var(--dim);padding:4px 10px}
-  .sync.err{color:var(--no)}
-  .sync.ok{color:var(--ok)}
 </style>
 </head>
 <body>
@@ -155,7 +155,6 @@
     </div>
   </div>
   <div class="active-filters" id="activeFilters"></div>
-  <div class="sync" id="sync"></div>
 </header>
 
 <div class="list" id="list"></div>
@@ -193,6 +192,7 @@ let sortBy = 'fecha';
 let currentPlayingUrl = null;  // track cuyo widget está abierto (o null)
 let filteredTracks = [];       // lista visible actual (para playNext)
 let scWidget = null;           // instancia del Widget API
+let lastSync = {kind:'', msg:''};  // último estado de sync (persiste entre renders)
 
 // ============================================================
 // SYNC (localStorage -> Apps Script -> Google Sheet)
@@ -256,9 +256,15 @@ function save(){
 }
 
 function setSync(kind, msg){
+  lastSync = {kind, msg};
+  applySync();
+}
+
+function applySync(){
   const el = document.getElementById('sync');
-  el.className = 'sync ' + kind;
-  el.textContent = msg;
+  if (!el) return;
+  el.className = 'stats-sync ' + lastSync.kind;
+  el.textContent = lastSync.msg ? ' · ' + lastSync.msg : '';
 }
 
 // ============================================================
@@ -399,7 +405,7 @@ function render(){
   // Línea 1: cantidad visible / total (más grande, prominente)
   // Línea 2: desglose por estado (❤❤ primero, luego ❤, ✕, Nuevos)
   document.getElementById('stats').innerHTML =
-    '<span class="stats-main">' + fmt(filtered.length) + ' <span class="stats-slash">/</span> ' + fmt(total) + '</span>' +
+    '<span class="stats-main">' + fmt(filtered.length) + ' <span class="stats-slash">/</span> ' + fmt(total) + '<span id="sync" class="stats-sync"></span></span>' +
     '<span class="stats-pills">' +
       '<span class="stat-pill s-g2">❤❤ ' + fmt(g2s) + '</span>' +
       '<span class="stat-pill s-g">❤ ' + fmt(gs) + '</span>' +
@@ -407,6 +413,7 @@ function render(){
       '<span class="stat-pill s-x">✕ ' + fmt(xs) + '</span>' +
       '<span class="stat-pill s-new">✨ ' + fmt(nvos) + '</span>' +
     '</span>';
+  applySync();
 }
 
 function fmt(n){
@@ -497,8 +504,9 @@ function cardHTML(t){
       ${stateBadge ? '<div class="badges">' + stateBadge + '</div>' : ''}
       <div class="actions">
         <button class="btn play ${isPlaying ? 'playing' : ''}" data-play="${esc(t.u)}">${isPlaying ? '⏸' : '▶ Play'}</button>
-        ${isPlaying ? '<button class="btn seek" data-seek-by="-15">-15s</button>' : ''}
-        ${isPlaying ? '<button class="btn seek" data-seek-by="15">+15s</button>' : ''}
+        ${isPlaying ? '<button class="btn seek" data-seek-by="15">+15</button>' : ''}
+        ${isPlaying ? '<button class="btn seek" data-seek-by="30">+30</button>' : ''}
+        ${isPlaying ? '<button class="btn seek" data-seek-by="60">+60</button>' : ''}
       </div>
       ${playerHTML}
       ${isPlaying ? `
@@ -601,12 +609,46 @@ document.getElementById('stateFilters').addEventListener('click', e => {
   render();
 });
 
+// Toggle manual: al usarlo, se desactiva el auto-hide para respetar la intención
+let autoHideEnabled = true;
 document.getElementById('toggleFilters').addEventListener('click', () => {
   const collapsible = document.getElementById('filtersCollapsible');
   const btn = document.getElementById('toggleFilters');
   collapsible.classList.toggle('collapsed');
   btn.classList.toggle('collapsed');
+  autoHideEnabled = false;
 });
+
+// Auto-hide/show del filtro según dirección del scroll
+let lastScrollY = window.scrollY;
+let scrollTicking = false;
+function onScroll(){
+  if (scrollTicking) return;
+  scrollTicking = true;
+  requestAnimationFrame(() => {
+    if (autoHideEnabled) {
+      const currentY = window.scrollY;
+      const delta = currentY - lastScrollY;
+      // Umbral de 10px para evitar disparos por bounce/microscroll
+      if (Math.abs(delta) > 10) {
+        const collapsible = document.getElementById('filtersCollapsible');
+        const btn = document.getElementById('toggleFilters');
+        if (delta > 0 && currentY > 40) {
+          // Bajando: esconder
+          collapsible.classList.add('collapsed');
+          btn.classList.add('collapsed');
+        } else if (delta < 0) {
+          // Subiendo: mostrar
+          collapsible.classList.remove('collapsed');
+          btn.classList.remove('collapsed');
+        }
+        lastScrollY = currentY;
+      }
+    }
+    scrollTicking = false;
+  });
+}
+window.addEventListener('scroll', onScroll, {passive: true});
 
 document.getElementById('sortFilters').addEventListener('click', e => {
   if (e.target.tagName !== 'BUTTON') return;
