@@ -165,6 +165,8 @@
 // CONFIG
 // ============================================================
 const TRACKS_URL = 'tracks.json?t=' + Date.now();
+// Fallback: si tracks.json local no existe (ej. abriendo el HTML suelto), usa producción
+const TRACKS_URL_FALLBACK = 'https://aleventura.github.io/sc/tracks.json?t=' + Date.now();
 // URL del Apps Script deployment. Se pega despues del setup.
 const SYNC_URL = 'https://script.google.com/macros/s/AKfycby3uI-6sm_Q6igc4jmebxi9xz5s_DDWuidx1EIGWuAtRAUH0_hgx0p-EHK5g9lYSylJ/exec';
 const LS = 'sc_tracks_state_v1';
@@ -754,17 +756,32 @@ if (DEV_MODE) {
   pullState();
   setSync('ok', 'DEV_MODE: usando tracks de ejemplo');
 } else {
-  fetch(TRACKS_URL)
-    .then(r => r.json())
+  // Intenta cargar tracks.json local; si falla o viene vacío, cae a producción.
+  const loadTracks = (url) => fetch(url).then(r => {
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    return r.json();
+  });
+
+  loadTracks(TRACKS_URL)
     .then(payload => {
-      TRACKS = (payload && payload.t) ? payload.t : (Array.isArray(payload) ? payload : []);
+      const arr = (payload && payload.t) ? payload.t : (Array.isArray(payload) ? payload : []);
+      if (!arr.length) throw new Error('vacío');
+      return arr;
+    })
+    .catch(() => {
+      // Fallback a la URL de producción
+      return loadTracks(TRACKS_URL_FALLBACK)
+        .then(payload => (payload && payload.t) ? payload.t : (Array.isArray(payload) ? payload : []));
+    })
+    .then(arr => {
+      TRACKS = arr;
       populateAccountsDropdown();
       render();
       pullState();
     })
     .catch(err => {
       document.getElementById('list').innerHTML =
-        '<div class="empty">Error cargando tracks.json: ' + esc(err.message) + '</div>';
+        '<div class="empty">Error cargando tracks: ' + esc(err.message) + '</div>';
     });
 }
 </script>
