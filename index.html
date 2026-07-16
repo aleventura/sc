@@ -17,7 +17,7 @@
   html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
     font:15px/1.4 -apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',Roboto,sans-serif;
     -webkit-tap-highlight-color:transparent;overscroll-behavior:none}
-  header{position:sticky;top:0;background:var(--bg);z-index:10;
+  header{position:fixed;top:0;left:0;right:0;background:var(--bg);z-index:10;
     padding:env(safe-area-inset-top) 12px 8px;border-bottom:1px solid var(--border)}
   h1{font-size:16px;margin:6px 0 8px}
   .header-top{display:flex;align-items:center;justify-content:flex-end;gap:8px}
@@ -48,7 +48,7 @@
   .chip.active{background:var(--acc);border-color:var(--acc);color:#fff}
   .chip.sec{background:transparent}
   .chip.sec.active{background:var(--acc2);border-color:var(--acc2)}
-  .list{padding:8px 10px 40px}
+  .list{padding:10px 10px 40px;padding-top:var(--header-h, 160px)}
   .card{background:var(--card);border:1px solid var(--border);border-radius:12px;
     padding:10px 12px;margin-bottom:8px}
   .card.hidden{display:none}
@@ -390,6 +390,7 @@ function render(){
   }
 
   af.innerHTML = chips.join('');
+  syncHeaderHeight(); // el chip de cuenta cambia la altura del header flotante
   af.querySelectorAll('[data-clear]').forEach(el => {
     el.addEventListener('click', () => {
       if (el.dataset.clear === 'account') {
@@ -619,7 +620,11 @@ function seekBy(seconds){
   if (!scWidget) return;
   scWidget.getPosition(pos => {
     const target = Math.max(0, pos + seconds * 1000);
+    // Pausar antes de saltar silencia el glitch de buffer que suena en iOS.
+    // Se reanuda apenas el seek termina de posicionar.
+    scWidget.pause();
     scWidget.seekTo(target);
+    setTimeout(() => { if (scWidget) scWidget.play(); }, 120);
   });
 }
 
@@ -650,6 +655,15 @@ let scrollTicking = false;
 
 // Colapsa o expande el filtro. La animación es puramente CSS (transición de max-height).
 // No se toca el scroll: el header sticky se achica suave y la lista se reacomoda sola.
+// Ajusta el padding-top de la lista a la altura real del header flotante.
+// Se llama al cargar, al colapsar/expandir el filtro, y en resize.
+function syncHeaderHeight(){
+  const header = document.querySelector('header');
+  if (!header) return;
+  const h = header.offsetHeight;
+  document.documentElement.style.setProperty('--header-h', h + 'px');
+}
+
 function setFiltersCollapsed(collapsed){
   const collapsible = document.getElementById('filtersCollapsible');
   const btn = document.getElementById('toggleFilters');
@@ -657,6 +671,14 @@ function setFiltersCollapsed(collapsed){
   if (collapsed === isCollapsed) return; // sin cambios
   collapsible.classList.toggle('collapsed', collapsed);
   btn.classList.toggle('collapsed', collapsed);
+  // Actualizar altura durante la transición para que la lista acompañe suave
+  const start = performance.now();
+  const dur = 320;
+  function tick(now){
+    syncHeaderHeight();
+    if (now - start < dur) requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
 }
 
 function onScroll(){
@@ -679,6 +701,7 @@ function onScroll(){
   });
 }
 window.addEventListener('scroll', onScroll, {passive: true});
+window.addEventListener('resize', syncHeaderHeight);
 
 document.getElementById('sortFilters').addEventListener('click', e => {
   if (e.target.tagName !== 'BUTTON') return;
@@ -732,6 +755,7 @@ if (DEV_MODE) {
   TRACKS = DEV_TRACKS;
   populateAccountsDropdown();
   render();
+  syncHeaderHeight();
   pullState();
   setSync('ok', 'DEV_MODE: usando tracks de ejemplo');
 } else {
@@ -756,6 +780,7 @@ if (DEV_MODE) {
       TRACKS = arr;
       populateAccountsDropdown();
       render();
+      syncHeaderHeight();
       pullState();
     })
     .catch(err => {
