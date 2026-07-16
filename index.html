@@ -114,7 +114,7 @@
   .marks-row{margin-top:6px}
   .inline-player{margin-top:8px;border-radius:8px;overflow:hidden;
     animation:slide-down .3s ease-out}
-  .inline-player iframe{width:100%;height:166px;border:0;display:block}
+  .inline-player iframe{width:100%;height:120px;border:0;display:block}
   @keyframes slide-down{
     from{opacity:0;max-height:0;margin-top:0}
     to{opacity:1;max-height:200px;margin-top:8px}
@@ -350,8 +350,11 @@ function render(){
     if (iframe && window.SC && window.SC.Widget) {
       scWidget = window.SC.Widget(iframe);
       scWidget.bind(window.SC.Widget.Events.READY, () => {
-        // Forzar play (el auto_play del URL a veces es bloqueado por Safari)
+        // Intentar reproducir con reintentos escalonados.
+        // iOS a veces acepta el 2do o 3er intento si el 1ro llega muy pronto.
         scWidget.play();
+        setTimeout(() => { if (scWidget) scWidget.play(); }, 150);
+        setTimeout(() => { if (scWidget) scWidget.play(); }, 500);
       });
       scWidget.bind(window.SC.Widget.Events.FINISH, () => {
         playNext();
@@ -486,7 +489,7 @@ function cardHTML(t){
   const isPlaying = t.u === currentPlayingUrl;
   const playerHTML = isPlaying ? `
     <div class="inline-player">
-      <iframe id="scWidget" src="https://w.soundcloud.com/player/?url=${encodeURIComponent(t.u)}&auto_play=true&show_artwork=true&show_comments=false&visual=false&buying=false&sharing=false&download=false" allow="autoplay"></iframe>
+      <iframe id="scWidget" src="https://w.soundcloud.com/player/?url=${encodeURIComponent(t.u)}&auto_play=true&show_artwork=false&show_comments=false&visual=false&buying=false&sharing=false&download=false&show_playcount=false&show_user=false&hide_related=true&show_teaser=false" allow="autoplay"></iframe>
     </div>` : '';
 
   return `
@@ -525,6 +528,16 @@ function cardHTML(t){
 // ============================================================
 
 function playTrack(url){
+  // Desbloquear el contexto de audio de iOS en el gesto del usuario.
+  // Ayuda a que Safari permita reproducción de audio en la sesión.
+  try {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (AC) {
+      window._audioCtx = window._audioCtx || new AC();
+      if (window._audioCtx.state === 'suspended') window._audioCtx.resume();
+    }
+  } catch(e) { /* no soportado, seguir igual */ }
+
   if (currentPlayingUrl === url) {
     // Toggle off: cerrar player
     currentPlayingUrl = null;
