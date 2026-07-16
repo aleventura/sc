@@ -25,9 +25,8 @@
     width:32px;height:32px;border-radius:6px;font-size:12px;cursor:pointer;
     display:flex;align-items:center;justify-content:center;transition:transform .3s ease}
   .toggle-filters.collapsed{transform:rotate(180deg)}
-  .filters-collapsible{max-height:500px;overflow:hidden;transition:max-height .35s ease}
-  .filters-collapsible.no-anim{transition:none}
-  .filters-collapsible.collapsed{max-height:0}
+  .filters-collapsible{max-height:500px;overflow:hidden;transition:max-height .3s ease,opacity .3s ease;opacity:1}
+  .filters-collapsible.collapsed{max-height:0;opacity:0}
   .stats{margin-bottom:8px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
   .stats-main{font-size:14px;font-weight:700;color:var(--fg);line-height:1.3;white-space:nowrap}
   .stats-main .stats-slash{color:var(--dim);font-weight:400;margin:0 2px}
@@ -641,7 +640,7 @@ let autoHideEnabled = true;
 document.getElementById('toggleFilters').addEventListener('click', () => {
   const collapsible = document.getElementById('filtersCollapsible');
   const willCollapse = !collapsible.classList.contains('collapsed');
-  setFiltersCollapsed(willCollapse, true); // animado, sin compensar scroll
+  setFiltersCollapsed(willCollapse);
   autoHideEnabled = false;
 });
 
@@ -649,35 +648,15 @@ document.getElementById('toggleFilters').addEventListener('click', () => {
 let lastScrollY = window.scrollY;
 let scrollTicking = false;
 
-// Colapsa o expande el filtro compensando el scroll para que la lista visible no salte.
-// animate=false hace el cambio instantáneo (para el auto-hide por scroll, así la compensación es exacta).
-function setFiltersCollapsed(collapsed, animate){
+// Colapsa o expande el filtro. La animación es puramente CSS (transición de max-height).
+// No se toca el scroll: el header sticky se achica suave y la lista se reacomoda sola.
+function setFiltersCollapsed(collapsed){
   const collapsible = document.getElementById('filtersCollapsible');
   const btn = document.getElementById('toggleFilters');
   const isCollapsed = collapsible.classList.contains('collapsed');
   if (collapsed === isCollapsed) return; // sin cambios
-
-  const contentHeight = collapsible.scrollHeight;
-
-  if (!animate) collapsible.classList.add('no-anim');
-
-  if (collapsed) {
-    collapsible.classList.add('collapsed');
-    btn.classList.add('collapsed');
-    if (!animate) window.scrollBy(0, -contentHeight);
-  } else {
-    collapsible.classList.remove('collapsed');
-    btn.classList.remove('collapsed');
-    if (!animate) window.scrollBy(0, contentHeight);
-  }
-
-  if (!animate) {
-    // Restaurar la transición después del reflow para futuros usos manuales
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => collapsible.classList.remove('no-anim'));
-    });
-  }
-  lastScrollY = window.scrollY;
+  collapsible.classList.toggle('collapsed', collapsed);
+  btn.classList.toggle('collapsed', collapsed);
 }
 
 function onScroll(){
@@ -687,13 +666,13 @@ function onScroll(){
     if (autoHideEnabled) {
       const currentY = window.scrollY;
       const delta = currentY - lastScrollY;
-      if (Math.abs(delta) > 10) {
-        if (delta > 0 && currentY > 40) {
-          setFiltersCollapsed(true, false);   // bajando: esconder (instantáneo)
+      if (Math.abs(delta) > 12) {
+        if (delta > 0 && currentY > 60) {
+          setFiltersCollapsed(true);   // bajando: esconder
         } else if (delta < 0) {
-          setFiltersCollapsed(false, false);  // subiendo: mostrar (instantáneo)
+          setFiltersCollapsed(false);  // subiendo: mostrar
         }
-        lastScrollY = window.scrollY;
+        lastScrollY = currentY;
       }
     }
     scrollTicking = false;
