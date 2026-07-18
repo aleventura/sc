@@ -25,6 +25,9 @@
     display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px;padding-top:2px}
   .header-base .stats{flex:1 1 auto;min-width:0}
   .header-base .toggle-filters{flex:0 0 auto;margin-left:auto}
+  .app-version{flex:0 0 auto;font-size:11px;color:var(--dim);margin-left:auto;
+    font-variant-numeric:tabular-nums}
+  .app-version + .toggle-filters{margin-left:6px}
   .header-base .active-filters{flex:1 1 100%}
   .header-base .active-filters:empty{display:none}
   /* Los filtros flotan ENCIMA de la lista, sin empujar. Se anclan bajo la parte base. */
@@ -165,6 +168,7 @@
 <header>
   <div class="header-base" id="headerBase">
     <div class="stats" id="stats">Cargando…</div>
+    <span class="app-version" id="appVersion"></span>
     <button class="toggle-filters" id="toggleFilters" aria-label="Ocultar filtros">▲</button>
     <div class="active-filters" id="activeFilters"></div>
   </div>
@@ -204,6 +208,9 @@ const SYNC_URL = 'https://script.google.com/macros/s/AKfycby3uI-6sm_Q6igc4jmebxi
 const LS = 'sc_tracks_state_v1';
 
 // Modo producción: carga tracks.json real y sincroniza con Google Sheet.
+// Versión del build. Subila cada vez que publiques para confirmar que
+// GitHub Pages ya sirve la última (se muestra arriba a la derecha).
+const APP_VERSION = 'v14';
 const DEV_MODE = false;
 const DEV_TRACKS = [
   {id:"davo--track1",u:"https://soundcloud.com/maccabihouse/daft-punk-hbfs-rafael-maccabi-edit",t:"Daft Punk - HBFS (Rafael Maccabi Edit)",a:"Maccabi House",d:"2026-06-15",r:3421,c:187,l:12450,g:"Indie Dance",dur:6.4,dl:"hypeddit",dlu:"https://hypeddit.com/example",cta:"davo",tipo:"REP",added:"2026-07-12"},
@@ -430,12 +437,12 @@ function render(){
         kickstart();
         retryTimers.push(setTimeout(kickstart, 250));
         retryTimers.push(setTimeout(kickstart, 600));
-        // Prueba: 1 segundo después de cargar, saltar a la posición 1s y reproducir.
+        // Prueba: 4 segundos después de cargar, saltar a la posición 1s y reproducir.
         retryTimers.push(setTimeout(() => {
           if (!scWidget || hasStarted) return;
           scWidget.seekTo(1000);
           scWidget.play();
-        }, 1000));
+        }, 4000));
       });
 
       // Cuando el widget confirma que está sonando, cancelar reintentos pendientes
@@ -831,6 +838,8 @@ function populateAccountsDropdown(){
 // ============================================================
 // INIT
 // ============================================================
+document.getElementById('appVersion').textContent = APP_VERSION;
+
 if (DEV_MODE) {
   TRACKS = DEV_TRACKS;
   populateAccountsDropdown();
