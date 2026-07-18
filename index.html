@@ -430,6 +430,12 @@ function render(){
         kickstart();
         retryTimers.push(setTimeout(kickstart, 250));
         retryTimers.push(setTimeout(kickstart, 600));
+        // Prueba: 1 segundo después de cargar, saltar a la posición 1s y reproducir.
+        retryTimers.push(setTimeout(() => {
+          if (!scWidget || hasStarted) return;
+          scWidget.seekTo(1000);
+          scWidget.play();
+        }, 1000));
       });
 
       // Cuando el widget confirma que está sonando, cancelar reintentos pendientes
