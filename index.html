@@ -421,17 +421,13 @@ function render(){
       let retryTimers = [];
 
       scWidget.bind(window.SC.Widget.Events.READY, () => {
-        // En iOS, un play() directo tras READY no siempre arranca, pero un
-        // seekTo seguido de play sí lo hace (mismo truco que seekBy). Replicamos eso:
-        // seek mínimo (1ms, imperceptible) que "despierta" al widget y permite el play.
+        // Intento de play. En iOS puede fallar si el iframe aún no recibió
+        // activación de audio (requiere un tap dentro del widget la primera vez).
         const kickstart = () => {
           if (!scWidget || hasStarted) return;
-          scWidget.seekTo(1);
           scWidget.play();
         };
-        // Primer intento inmediato en READY
         kickstart();
-        // Reintentos por si el buffer aún no estaba listo (solo si no arrancó)
         retryTimers.push(setTimeout(kickstart, 250));
         retryTimers.push(setTimeout(kickstart, 600));
       });
