@@ -68,7 +68,7 @@
   .chip.active{background:var(--acc);border-color:var(--acc);color:#fff}
   .chip.sec{background:transparent}
   .chip.sec.active{background:var(--acc2);border-color:var(--acc2)}
-  .list{padding:10px 10px 40px;padding-top:var(--header-h, 160px)}
+  .list{padding:10px 10px var(--player-h, 40px);padding-top:var(--header-h, 160px)}
   .card{background:var(--card);border:1px solid var(--border);border-radius:12px;
     padding:10px 12px;margin-bottom:8px;max-height:1000px}
   .card.hidden{display:none}
@@ -131,10 +131,29 @@
   .btn.g2.on{background:var(--acc);border-color:var(--acc);color:#fff}
   .btn.dl.on{background:var(--acc2);border-color:var(--acc2);color:#fff}
   .btn.x.on{background:var(--no);border-color:var(--no);color:#fff}
-  .marks-row{margin-top:6px}
-  .inline-player{margin-top:8px;border-radius:8px;overflow:hidden;
-    animation:slide-down .3s ease-out}
-  .inline-player iframe{width:100%;height:120px;border:0;display:block}
+  /* Barra de reproducción fija abajo (estilo Spotify/SoundCloud).
+     El iframe vive acá siempre y nunca se destruye: así conserva la
+     activación de audio de iOS y los siguientes tracks arrancan solos. */
+  .player-bar{position:fixed;left:0;right:0;bottom:0;z-index:20;
+    background:var(--card);border-top:1px solid var(--border);
+    padding:8px 10px calc(8px + env(safe-area-inset-bottom));
+    transform:translateY(115%);transition:transform .3s ease;
+    box-shadow:0 -4px 20px rgba(0,0,0,.4)}
+  .player-bar.visible{transform:translateY(0)}
+  .pb-top{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+  .pb-title{flex:1 1 auto;min-width:0;font-size:13px;font-weight:600;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .pb-artist{color:var(--dim);font-weight:400}
+  .pb-close{flex:0 0 auto;background:var(--btn);border:1px solid var(--border);
+    color:var(--dim);width:28px;height:28px;border-radius:6px;font-size:13px;cursor:pointer}
+  .pb-widget{border-radius:8px;overflow:hidden;margin-bottom:6px}
+  .pb-widget iframe{width:100%;height:100px;border:0;display:block}
+  .pb-row{display:flex;gap:6px;margin-bottom:6px}
+  .pb-row:last-child{margin-bottom:0}
+  .pb-row .btn{flex:1 1 0}
+  /* En la barra los botones son más bajos que en las cards */
+  .pb-row .btn.mark{padding:10px 6px;font-size:15px}
+  .pb-row .btn.seek{padding:8px 6px}
   @keyframes slide-down{
     from{opacity:0;max-height:0;margin-top:0}
     to{opacity:1;max-height:200px;margin-top:8px}
@@ -146,6 +165,7 @@
   /* Solo animar los primeros 40 cards visibles para no matar performance con listas largas */
   .card:nth-child(-n+40){animation:fade-in .2s ease-out both}
   .card{transition:border-color .2s ease}
+  .card.playing{border-color:var(--acc)}
   /* Salida al marcar: colapsa altura + fade, los de abajo suben suave */
   .card.leaving{
     animation:none;
@@ -196,6 +216,22 @@
 
 <div class="list" id="list"></div>
 
+<div class="player-bar" id="playerBar">
+  <div class="pb-top">
+    <div class="pb-title" id="pbTitle"></div>
+    <button class="pb-close" id="pbClose" aria-label="Cerrar reproductor">✕</button>
+  </div>
+  <div class="pb-widget">
+    <iframe id="scWidget" allow="autoplay" src="about:blank"></iframe>
+  </div>
+  <div class="pb-row">
+    <button class="btn seek" data-seek-by="15">+15</button>
+    <button class="btn seek" data-seek-by="30">+30</button>
+    <button class="btn seek" data-seek-by="60">+60</button>
+  </div>
+  <div class="pb-row" id="pbMarks"></div>
+</div>
+
 <script>
 // ============================================================
 // CONFIG
@@ -210,7 +246,7 @@ const LS = 'sc_tracks_state_v1';
 // Modo producción: carga tracks.json real y sincroniza con Google Sheet.
 // Versión del build. Subila cada vez que publiques para confirmar que
 // GitHub Pages ya sirve la última (se muestra arriba a la derecha).
-const APP_VERSION = 'v14';
+const APP_VERSION = 'v15';
 const DEV_MODE = false;
 const DEV_TRACKS = [
   {id:"davo--track1",u:"https://soundcloud.com/maccabihouse/daft-punk-hbfs-rafael-maccabi-edit",t:"Daft Punk - HBFS (Rafael Maccabi Edit)",a:"Maccabi House",d:"2026-06-15",r:3421,c:187,l:12450,g:"Indie Dance",dur:6.4,dl:"hypeddit",dlu:"https://hypeddit.com/example",cta:"davo",tipo:"REP",added:"2026-07-12"},
@@ -233,7 +269,9 @@ let filterAccount = null;  // cuenta seleccionada del dropdown o null
 let sortBy = 'fecha';
 let currentPlayingUrl = null;  // track cuyo widget está abierto (o null)
 let filteredTracks = [];       // lista visible actual (para playNext)
-let scWidget = null;           // instancia del Widget API
+let scWidget = null;           // instancia del Widget API (única, persistente)
+let widgetReady = false;       // el iframe del reproductor terminó de cargar
+let playerState = 'stopped';   // 'playing' | 'paused' | 'stopped'
 let lastSync = {kind:'', msg:''};  // último estado de sync (persiste entre renders)
 
 // ============================================================
@@ -331,22 +369,22 @@ function setState(id, s){
   else st[id] = newState;
   save();
 
+  // La reproducción NO se corta al marcar: el widget es persistente.
+  updatePlayerBar();
+
   const card = document.querySelector('.card[data-track-id="' + cssEscape(id) + '"]');
   if (leavesView && card) {
     // Animar salida: colapsa la altura y hace fade, después re-render
     card.classList.add('leaving');
-    // Cerrar el player si este track lo tenía abierto
-    if (currentPlayingUrl) {
-      const t = TRACKS.find(x => x.id === id);
-      if (t && t.u === currentPlayingUrl) { currentPlayingUrl = null; scWidget = null; }
-    }
     setTimeout(() => {
       populateAccountsDropdown();
       render();
+      highlightPlayingCard();
     }, 260);
   } else {
     populateAccountsDropdown();
     render();
+    highlightPlayingCard();
   }
 }
 
@@ -395,12 +433,6 @@ function render(){
     list.querySelectorAll('[data-play]').forEach(el => {
       el.addEventListener('click', () => playTrack(el.dataset.play));
     });
-    list.querySelectorAll('[data-next]').forEach(el => {
-      el.addEventListener('click', () => playNext());
-    });
-    list.querySelectorAll('[data-seek-by]').forEach(el => {
-      el.addEventListener('click', () => seekBy(parseInt(el.dataset.seekBy, 10)));
-    });
     list.querySelectorAll('[data-mark]').forEach(el => {
       el.addEventListener('click', () => {
         const [id, s] = el.dataset.mark.split('|');
@@ -419,43 +451,6 @@ function render(){
         render();
       });
     });
-
-    // Enganchar Widget API al iframe activo (si existe)
-    const iframe = document.getElementById('scWidget');
-    if (iframe && window.SC && window.SC.Widget) {
-      scWidget = window.SC.Widget(iframe);
-      let hasStarted = false;      // el widget confirmó que está reproduciendo
-      let retryTimers = [];
-
-      scWidget.bind(window.SC.Widget.Events.READY, () => {
-        // Intento de play. En iOS puede fallar si el iframe aún no recibió
-        // activación de audio (requiere un tap dentro del widget la primera vez).
-        const kickstart = () => {
-          if (!scWidget || hasStarted) return;
-          scWidget.play();
-        };
-        kickstart();
-        retryTimers.push(setTimeout(kickstart, 250));
-        retryTimers.push(setTimeout(kickstart, 600));
-        // Prueba: 4 segundos después de cargar, saltar a la posición 1s y reproducir.
-        retryTimers.push(setTimeout(() => {
-          if (!scWidget || hasStarted) return;
-          scWidget.seekTo(1000);
-          scWidget.play();
-        }, 4000));
-      });
-
-      // Cuando el widget confirma que está sonando, cancelar reintentos pendientes
-      scWidget.bind(window.SC.Widget.Events.PLAY, () => {
-        hasStarted = true;
-        retryTimers.forEach(clearTimeout);
-        retryTimers = [];
-      });
-
-      scWidget.bind(window.SC.Widget.Events.FINISH, () => {
-        playNext();
-      });
-    }
   }
 
   // Filtros activos (cuenta) — chip removible + botón bulk-descartar
@@ -587,15 +582,10 @@ function cardHTML(t){
       </div>`;
   }
 
-  // Player inline si es el track activo
-  const isPlaying = t.u === currentPlayingUrl;
-  const playerHTML = isPlaying ? `
-    <div class="inline-player">
-      <iframe id="scWidget" src="https://w.soundcloud.com/player/?url=${encodeURIComponent(t.u)}&auto_play=true&show_artwork=false&show_comments=false&visual=false&buying=false&sharing=false&download=false&show_playcount=false&show_user=false&hide_related=true&show_teaser=false" allow="autoplay"></iframe>
-    </div>` : '';
+  const isCurrent = t.u === currentPlayingUrl;
 
   return `
-    <div class="card" data-track-id="${esc(t.id)}">
+    <div class="card ${isCurrent ? 'playing' : ''}" data-track-id="${esc(t.id)}">
       <div class="title">${esc(t.t)}</div>
       ${whoHTML}
       <div class="meta">
@@ -608,19 +598,8 @@ function cardHTML(t){
       </div>
       ${stateBadge ? '<div class="badges">' + stateBadge + '</div>' : ''}
       <div class="actions">
-        <button class="btn play ${isPlaying ? 'playing' : ''}" data-play="${esc(t.u)}">${isPlaying ? '⏸' : '▶ Play'}</button>
-        ${isPlaying ? '<button class="btn seek" data-seek-by="15">+15</button>' : ''}
-        ${isPlaying ? '<button class="btn seek" data-seek-by="30">+30</button>' : ''}
-        ${isPlaying ? '<button class="btn seek" data-seek-by="60">+60</button>' : ''}
+        <button class="btn play" data-play="${esc(t.u)}">${isCurrent ? '♪ Sonando' : '▶ Play'}</button>
       </div>
-      ${playerHTML}
-      ${isPlaying ? `
-        <div class="actions marks-row">
-          <button class="btn mark g2 ${s === 'g2' ? 'on' : ''}" data-mark="${t.id}|g2">❤❤</button>
-          <button class="btn mark g ${s === 'g' ? 'on' : ''}" data-mark="${t.id}|g">❤</button>
-          <button class="btn mark dl ${s === 'dl' ? 'on' : ''}" data-mark="${t.id}|dl">⬇</button>
-          <button class="btn mark x ${s === 'x' ? 'on' : ''}" data-mark="${t.id}|x">✕</button>
-        </div>` : ''}
     </div>
   `;
 }
@@ -629,9 +608,31 @@ function cardHTML(t){
 // PLAYER (SoundCloud widget inline dentro del card)
 // ============================================================
 
+// Opciones del widget (compacto, sin recomendaciones ni artwork)
+const WIDGET_OPTS = {
+  auto_play: true, show_artwork: false, show_comments: false, visual: false,
+  buying: false, sharing: false, download: false, show_playcount: false,
+  show_user: false, hide_related: true, show_teaser: false
+};
+
+// Crea el widget UNA sola vez. El iframe nunca se destruye: así conserva
+// la activación de audio que iOS concede al primer tap dentro del reproductor.
+function initWidget(seedUrl){
+  const iframe = document.getElementById('scWidget');
+  if (!iframe || !window.SC || !window.SC.Widget || !seedUrl) return;
+  const params = '&auto_play=false&show_artwork=false&show_comments=false&visual=false' +
+    '&buying=false&sharing=false&download=false&show_playcount=false' +
+    '&show_user=false&hide_related=true&show_teaser=false';
+  iframe.src = 'https://w.soundcloud.com/player/?url=' + encodeURIComponent(seedUrl) + params;
+  scWidget = window.SC.Widget(iframe);
+  scWidget.bind(window.SC.Widget.Events.READY, () => { widgetReady = true; });
+  scWidget.bind(window.SC.Widget.Events.PLAY, () => { playerState = 'playing'; });
+  scWidget.bind(window.SC.Widget.Events.PAUSE, () => { playerState = 'paused'; });
+  scWidget.bind(window.SC.Widget.Events.FINISH, () => { playNext(); });
+}
+
 function playTrack(url){
-  // Desbloquear el contexto de audio de iOS en el gesto del usuario.
-  // Ayuda a que Safari permita reproducción de audio en la sesión.
+  // Desbloquear el contexto de audio de iOS aprovechando el gesto del usuario
   try {
     const AC = window.AudioContext || window.webkitAudioContext;
     if (AC) {
@@ -640,67 +641,109 @@ function playTrack(url){
     }
   } catch(e) { /* no soportado, seguir igual */ }
 
-  if (currentPlayingUrl === url) {
-    // Toggle off: cerrar player
-    currentPlayingUrl = null;
-    scWidget = null;
-  } else {
-    currentPlayingUrl = url;
-    scWidget = null; // se re-atacha en render
-    // MediaSession API para Lock Screen / AirPods / CarPlay
-    if ('mediaSession' in navigator) {
-      const track = TRACKS.find(t => t.u === url);
-      const title = track ? track.t : url.replace(/^https?:\/\/(www\.)?soundcloud\.com\//, '');
-      const artist = track ? track.a : 'SoundCloud';
-      navigator.mediaSession.metadata = new MediaMetadata({
-        title: title,
-        artist: artist,
-        album: 'SoundCloud'
-      });
-      // Handlers para botones nativos del auto/AirPods/Lock Screen.
-      // Nota: pueden no funcionar en iOS Safari con iframe cross-origin,
-      // pero seteados no hacen daño y en algunos contextos sí responden.
-      try {
-        navigator.mediaSession.setActionHandler('nexttrack', () => playNext());
-        navigator.mediaSession.setActionHandler('previoustrack', () => playPrev());
-        navigator.mediaSession.setActionHandler('seekforward', () => seekBy(30));
-        navigator.mediaSession.setActionHandler('play', () => { if (scWidget) scWidget.play(); });
-        navigator.mediaSession.setActionHandler('pause', () => { if (scWidget) scWidget.pause(); });
-      } catch(e) { /* algunos handlers no soportados en ciertos browsers */ }
-    }
+  // Mismo track: alternar play/pausa
+  if (currentPlayingUrl === url && scWidget && widgetReady) {
+    if (playerState === 'playing') scWidget.pause();
+    else scWidget.play();
+    return;
   }
-  render();
+
+  currentPlayingUrl = url;
+  // load() se llama SINCRÓNICAMENTE dentro del handler del tap: así el
+  // arranque queda dentro de la ventana de gesto que exige iOS.
+  if (scWidget && widgetReady) {
+    scWidget.load(url, Object.assign({}, WIDGET_OPTS, {
+      callback: () => { if (scWidget) scWidget.play(); }
+    }));
+  }
+  setMediaSession(url);
+  updatePlayerBar();
+  highlightPlayingCard();
+}
+
+function setMediaSession(url){
+  if (!('mediaSession' in navigator)) return;
+  const track = TRACKS.find(t => t.u === url);
+  const title = track ? track.t : url.replace(/^https?:\/\/(www\.)?soundcloud\.com\//, '');
+  const artist = track ? track.a : 'SoundCloud';
+  try {
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title: title, artist: artist, album: 'SoundCloud'
+    });
+    navigator.mediaSession.setActionHandler('nexttrack', () => playNext());
+    navigator.mediaSession.setActionHandler('previoustrack', () => playPrev());
+    navigator.mediaSession.setActionHandler('seekforward', () => seekBy(30));
+    navigator.mediaSession.setActionHandler('play', () => { if (scWidget) scWidget.play(); });
+    navigator.mediaSession.setActionHandler('pause', () => { if (scWidget) scWidget.pause(); });
+  } catch(e) { /* handlers no soportados en algunos browsers */ }
+}
+
+// Muestra/actualiza la barra inferior con el track actual y sus marcas
+function updatePlayerBar(){
+  const bar = document.getElementById('playerBar');
+  const t = TRACKS.find(x => x.u === currentPlayingUrl);
+  if (!t) {
+    bar.classList.remove('visible');
+    syncPlayerHeight();
+    return;
+  }
+  document.getElementById('pbTitle').innerHTML =
+    esc(t.t) + ' <span class="pb-artist">· ' + esc(t.a) + '</span>';
+  const s = getState(t.id);
+  document.getElementById('pbMarks').innerHTML =
+    '<button class="btn mark g2 ' + (s === 'g2' ? 'on' : '') + '" data-mark="' + esc(t.id) + '|g2">❤❤</button>' +
+    '<button class="btn mark g '  + (s === 'g'  ? 'on' : '') + '" data-mark="' + esc(t.id) + '|g">❤</button>' +
+    '<button class="btn mark dl ' + (s === 'dl' ? 'on' : '') + '" data-mark="' + esc(t.id) + '|dl">⬇</button>' +
+    '<button class="btn mark x '  + (s === 'x'  ? 'on' : '') + '" data-mark="' + esc(t.id) + '|x">✕</button>';
+  bar.classList.add('visible');
+  syncPlayerHeight();
+}
+
+// Reserva espacio abajo para que la barra no tape los últimos tracks
+function syncPlayerHeight(){
+  const bar = document.getElementById('playerBar');
+  if (!bar) return;
+  const h = bar.classList.contains('visible') ? bar.offsetHeight + 12 : 40;
+  document.documentElement.style.setProperty('--player-h', h + 'px');
+}
+
+// Marca visualmente qué card se está reproduciendo (sin re-render completo)
+function highlightPlayingCard(){
+  document.querySelectorAll('.card.playing').forEach(c => {
+    c.classList.remove('playing');
+    const b = c.querySelector('.btn.play');
+    if (b) b.textContent = '▶ Play';
+  });
+  const t = TRACKS.find(x => x.u === currentPlayingUrl);
+  if (!t) return;
+  const card = document.querySelector('.card[data-track-id="' + cssEscape(t.id) + '"]');
+  if (!card) return;
+  card.classList.add('playing');
+  const b = card.querySelector('.btn.play');
+  if (b) b.textContent = '♪ Sonando';
+}
+
+function closePlayer(){
+  if (scWidget) scWidget.pause();
+  currentPlayingUrl = null;
+  updatePlayerBar();
+  highlightPlayingCard();
 }
 
 function playNext(){
   if (!currentPlayingUrl || !filteredTracks.length) return;
   const idx = filteredTracks.findIndex(t => t.u === currentPlayingUrl);
-  if (idx === -1) {
-    // El track actual no está en la vista filtrada; arrancar por el primero
-    playTrack(filteredTracks[0].u);
-    return;
-  }
+  if (idx === -1) { playTrack(filteredTracks[0].u); return; }
   const next = filteredTracks[idx + 1];
-  if (!next) {
-    // Fin de la lista
-    currentPlayingUrl = null;
-    scWidget = null;
-    render();
-    return;
-  }
+  if (!next) { closePlayer(); return; }
   playTrack(next.u);
 }
 
 function playPrev(){
   if (!currentPlayingUrl || !filteredTracks.length) return;
   const idx = filteredTracks.findIndex(t => t.u === currentPlayingUrl);
-  if (idx <= 0) return; // no hay anterior o no encontrado
+  if (idx <= 0) return;
   playTrack(filteredTracks[idx - 1].u);
-}
-
-// Salta al segundo N del track (típicamente pasa la intro y va al drop)
-function seekToSecond(seconds){
-  if (scWidget) scWidget.seekTo(seconds * 1000); // ms
 }
 
 // Avanza N segundos desde la posición actual
@@ -787,7 +830,19 @@ function onScroll(){
   });
 }
 window.addEventListener('scroll', onScroll, {passive: true});
-window.addEventListener('resize', syncHeaderHeight);
+window.addEventListener('resize', () => { syncHeaderHeight(); syncPlayerHeight(); });
+
+// Controles de la barra de reproducción (se enganchan una sola vez)
+document.getElementById('pbClose').addEventListener('click', closePlayer);
+document.querySelectorAll('#playerBar [data-seek-by]').forEach(el => {
+  el.addEventListener('click', () => seekBy(parseInt(el.dataset.seekBy, 10)));
+});
+document.getElementById('pbMarks').addEventListener('click', e => {
+  const btn = e.target.closest('[data-mark]');
+  if (!btn) return;
+  const [id, s] = btn.dataset.mark.split('|');
+  setState(id, s);
+});
 
 document.getElementById('sortFilters').addEventListener('click', e => {
   if (e.target.tagName !== 'BUTTON') return;
@@ -845,6 +900,8 @@ if (DEV_MODE) {
   populateAccountsDropdown();
   render();
   syncHeaderHeight();
+  syncPlayerHeight();
+  initWidget(TRACKS[0] && TRACKS[0].u);
   pullState();
   setSync('ok', 'DEV_MODE: usando tracks de ejemplo');
 } else {
@@ -870,6 +927,8 @@ if (DEV_MODE) {
       populateAccountsDropdown();
       render();
       syncHeaderHeight();
+      syncPlayerHeight();
+      initWidget(arr[0] && arr[0].u);
       pullState();
     })
     .catch(err => {
