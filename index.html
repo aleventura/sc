@@ -155,6 +155,7 @@
   /* En la barra los botones son más bajos que en las cards */
   .pb-row .btn.mark{padding:10px 6px;font-size:15px}
   .pb-row .btn.seek{padding:8px 6px}
+  .pb-row .btn.nav{flex:0 0 44px;padding:8px 4px;font-size:14px}
   @keyframes slide-down{
     from{opacity:0;max-height:0;margin-top:0}
     to{opacity:1;max-height:200px;margin-top:8px}
@@ -227,9 +228,11 @@
     <iframe id="scWidget" allow="autoplay" src="about:blank"></iframe>
   </div>
   <div class="pb-row">
+    <button class="btn nav" id="pbPrev" aria-label="Anterior">⏮</button>
     <button class="btn seek" data-seek-by="15">+15</button>
     <button class="btn seek" data-seek-by="30">+30</button>
     <button class="btn seek" data-seek-by="60">+60</button>
+    <button class="btn nav" id="pbNext" aria-label="Siguiente">⏭</button>
   </div>
   <div class="pb-row" id="pbMarks"></div>
 </div>
@@ -248,7 +251,7 @@ const LS = 'sc_tracks_state_v1';
 // Modo producción: carga tracks.json real y sincroniza con Google Sheet.
 // Versión del build. Subila cada vez que publiques para confirmar que
 // GitHub Pages ya sirve la última (se muestra arriba a la derecha).
-const APP_VERSION = 'v19';
+const APP_VERSION = 'v20';
 const DEV_MODE = false;
 const DEV_TRACKS = [
   {id:"davo--track1",u:"https://soundcloud.com/maccabihouse/daft-punk-hbfs-rafael-maccabi-edit",t:"Daft Punk - HBFS (Rafael Maccabi Edit)",a:"Maccabi House",d:"2026-06-15",r:3421,c:187,l:12450,g:"Indie Dance",dur:6.4,dl:"hypeddit",dlu:"https://hypeddit.com/example",cta:"davo",tipo:"REP",added:"2026-07-12"},
@@ -764,6 +767,12 @@ function highlightPlayingCard(){
   if (b) b.textContent = '♪ Sonando';
 }
 
+// Lleva la lista hasta la card que se está reproduciendo
+function scrollToPlaying(){
+  const card = document.querySelector('.card.playing');
+  if (card) card.scrollIntoView({behavior: 'smooth', block: 'center'});
+}
+
 function closePlayer(){
   if (scWidget) scWidget.pause();
   currentPlayingUrl = null;
@@ -875,6 +884,8 @@ window.addEventListener('resize', () => { syncHeaderHeight(); syncPlayerHeight()
 
 // Controles de la barra de reproducción (se enganchan una sola vez)
 document.getElementById('pbClose').addEventListener('click', closePlayer);
+document.getElementById('pbPrev').addEventListener('click', () => { playPrev(); scrollToPlaying(); });
+document.getElementById('pbNext').addEventListener('click', () => { playNext(); scrollToPlaying(); });
 document.querySelectorAll('#playerBar [data-seek-by]').forEach(el => {
   el.addEventListener('click', () => seekBy(parseInt(el.dataset.seekBy, 10)));
 });
