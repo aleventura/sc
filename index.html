@@ -134,28 +134,83 @@
   /* Barra de reproducción fija abajo (estilo Spotify/SoundCloud).
      El iframe vive acá siempre y nunca se destruye: así conserva la
      activación de audio de iOS y los siguientes tracks arrancan solos. */
-  .player-bar{position:fixed;left:0;right:0;bottom:0;z-index:20;
+  /* ---- Reproductor propio (mini barra + panel expandido) ---- */
+  .player{position:fixed;left:0;right:0;bottom:0;z-index:30;
+    transform:translateY(115%);transition:transform .3s ease}
+  .player.visible{transform:translateY(0)}
+
+  /* Barra de progreso, arriba de todo el reproductor */
+  .pl-progress{height:3px;background:var(--border);position:relative;z-index:2}
+  .pl-fill{height:100%;width:0;background:var(--acc);transition:width .25s linear}
+
+  /* Mini barra */
+  .pl-mini{display:flex;align-items:center;gap:10px;
     background:var(--card);border-top:1px solid var(--border);
-    padding:8px 10px calc(8px + env(safe-area-inset-bottom));
-    transform:translateY(115%);transition:transform .3s ease;
-    box-shadow:0 -4px 20px rgba(0,0,0,.4)}
-  .player-bar.visible{transform:translateY(0)}
-  .pb-top{display:flex;align-items:center;gap:8px;margin-bottom:6px}
-  .pb-title{flex:1 1 auto;min-width:0;font-size:13px;font-weight:600;
-    white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .pb-artist{color:var(--dim);font-weight:400}
-  .pb-debug{flex:0 0 auto;font-size:10px;color:var(--dim);font-variant-numeric:tabular-nums}
-  .pb-close{flex:0 0 auto;background:var(--btn);border:1px solid var(--border);
-    color:var(--dim);width:28px;height:28px;border-radius:6px;font-size:13px;cursor:pointer}
-  .pb-widget{border-radius:8px;overflow:hidden;margin-bottom:6px}
-  .pb-widget iframe{width:100%;height:100px;border:0;display:block}
-  .pb-row{display:flex;gap:6px;margin-bottom:6px}
-  .pb-row:last-child{margin-bottom:0}
-  .pb-row .btn{flex:1 1 0}
-  /* En la barra los botones son más bajos que en las cards */
-  .pb-row .btn.mark{padding:10px 6px;font-size:15px}
-  .pb-row .btn.seek{padding:8px 6px}
-  .pb-row .btn.nav{flex:0 0 44px;padding:8px 4px;font-size:14px}
+    padding:8px 12px calc(8px + env(safe-area-inset-bottom));
+    box-shadow:0 -4px 20px rgba(0,0,0,.45);position:relative;z-index:2}
+  .player.open .pl-mini{opacity:0;pointer-events:none}
+  .pl-info{flex:1 1 auto;min-width:0;cursor:pointer}
+  .pl-t{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .pl-a{font-size:11px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .pl-round{flex:0 0 auto;width:40px;height:40px;border-radius:50%;
+    background:var(--acc);border:0;color:#fff;font-size:15px;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;transition:transform .1s ease}
+  .pl-round:active{transform:scale(.94)}
+  .pl-round.ghost{background:var(--btn);border:1px solid var(--border);color:var(--fg)}
+
+  /* Panel expandido */
+  .pl-full{position:fixed;left:0;right:0;bottom:0;top:0;background:var(--bg);
+    display:flex;flex-direction:column;
+    padding:env(safe-area-inset-top) 16px calc(16px + env(safe-area-inset-bottom));
+    transform:translateY(100%);transition:transform .3s ease;z-index:1}
+  .player.open .pl-full{transform:translateY(0)}
+  .pl-full-head{display:flex;justify-content:center;padding:8px 0}
+  .pl-collapse{background:none;border:0;color:var(--dim);font-size:22px;
+    cursor:pointer;padding:4px 20px;line-height:1}
+
+  /* Cola dentro del panel expandido */
+  .pl-queue{flex:1 1 auto;overflow-y:auto;margin-bottom:10px;min-height:0}
+  .q-empty{color:var(--dim);font-size:12px;padding:12px 2px;line-height:1.5}
+  .q-head{display:flex;justify-content:space-between;align-items:center;
+    font-size:11px;color:var(--dim);text-transform:uppercase;
+    letter-spacing:.04em;padding:4px 2px 8px;position:sticky;top:0;background:var(--bg)}
+  .q-clear{background:none;border:0;color:var(--no);font-size:11px;
+    cursor:pointer;text-transform:uppercase;letter-spacing:.04em}
+  .q-item{display:flex;align-items:center;gap:8px;padding:8px 2px;
+    border-bottom:1px solid var(--border)}
+  .q-info{flex:1 1 auto;min-width:0;cursor:pointer}
+  .q-t{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .q-a{font-size:11px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .q-x{flex:0 0 auto;background:none;border:0;color:var(--dim);
+    font-size:13px;cursor:pointer;padding:6px 8px}
+
+  /* Contador de cola sobre el botón siguiente */
+  .pl-qcount{position:absolute;right:6px;top:2px;background:var(--acc);color:#fff;
+    font-size:10px;font-weight:700;min-width:16px;height:16px;border-radius:8px;
+    display:flex;align-items:center;justify-content:center;padding:0 4px;
+    pointer-events:none}
+  .pl-qcount:empty{display:none}
+
+  /* Botón de encolar en las cards */
+  .btn.queue{flex:0 0 48px;font-size:16px;font-weight:700}
+  .pl-full-body{flex:1 1 auto;display:flex;flex-direction:column;justify-content:flex-end;gap:12px}
+  .pl-full-title{font-size:20px;font-weight:700;line-height:1.25}
+  .pl-full-who{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:13px}
+  .pl-times{display:flex;justify-content:space-between;font-size:11px;
+    color:var(--dim);font-variant-numeric:tabular-nums}
+  .pl-row{display:flex;gap:8px}
+  .pl-row .btn{flex:1 1 0}
+  .pl-row .btn.nav{flex:0 0 64px;font-size:16px}
+  .pl-row .btn.pl-play{background:var(--acc);border-color:var(--acc);color:#fff;
+    font-size:18px;font-weight:700;padding:14px 6px}
+  .pl-row .btn.mark{padding:14px 6px;font-size:16px}
+
+  /* Los iframes de SoundCloud quedan ocultos pero presentes:
+     display:none haría que iOS suspenda el audio. */
+  .pl-frames{position:absolute;bottom:0;left:0;width:1px;height:1px;
+    overflow:hidden;opacity:.01;pointer-events:none}
+  .pl-frames iframe{width:300px;height:120px;border:0}
+
   @keyframes slide-down{
     from{opacity:0;max-height:0;margin-top:0}
     to{opacity:1;max-height:200px;margin-top:8px}
@@ -218,23 +273,49 @@
 
 <div class="list" id="list"></div>
 
-<div class="player-bar" id="playerBar">
-  <div class="pb-top">
-    <div class="pb-title" id="pbTitle"></div>
-    <span class="pb-debug" id="pbDebug"></span>
-    <button class="pb-close" id="pbClose" aria-label="Cerrar reproductor">✕</button>
+<div class="player" id="player">
+  <div class="pl-progress"><div class="pl-fill" id="plFill"></div></div>
+
+  <!-- Mini barra: siempre visible cuando hay algo cargado -->
+  <div class="pl-mini" id="plMini">
+    <button class="pl-round" id="plPlayMini" aria-label="Reproducir">▶</button>
+    <div class="pl-info" id="plExpand">
+      <div class="pl-t" id="plMiniTitle"></div>
+      <div class="pl-a" id="plMiniArtist"></div>
+    </div>
+    <button class="pl-round ghost" id="plNextMini" aria-label="Siguiente">⏭</button>
+    <span class="pl-qcount" id="plQueueCount"></span>
   </div>
-  <div class="pb-widget">
-    <iframe id="scWidget" allow="autoplay" src="about:blank"></iframe>
+
+  <!-- Panel expandido -->
+  <div class="pl-full" id="plFull">
+    <div class="pl-full-head">
+      <button class="pl-collapse" id="plCollapse" aria-label="Contraer">⌄</button>
+    </div>
+    <div class="pl-queue" id="plQueue"></div>
+    <div class="pl-full-body">
+      <div class="pl-full-title" id="plFullTitle"></div>
+      <div class="pl-full-who" id="plFullWho"></div>
+      <div class="pl-times"><span id="plCur">0:00</span><span id="plDur">0:00</span></div>
+      <div class="pl-row">
+        <button class="btn nav" id="plPrev" aria-label="Anterior">⏮</button>
+        <button class="btn pl-play" id="plPlayFull" aria-label="Reproducir">▶</button>
+        <button class="btn nav" id="plNext" aria-label="Siguiente">⏭</button>
+      </div>
+      <div class="pl-row">
+        <button class="btn seek" data-seek-by="15">+15</button>
+        <button class="btn seek" data-seek-by="30">+30</button>
+        <button class="btn seek" data-seek-by="60">+60</button>
+      </div>
+      <div class="pl-row" id="plMarks"></div>
+    </div>
   </div>
-  <div class="pb-row">
-    <button class="btn nav" id="pbPrev" aria-label="Anterior">⏮</button>
-    <button class="btn seek" data-seek-by="15">+15</button>
-    <button class="btn seek" data-seek-by="30">+30</button>
-    <button class="btn seek" data-seek-by="60">+60</button>
-    <button class="btn nav" id="pbNext" aria-label="Siguiente">⏭</button>
+
+  <!-- Widgets de SoundCloud, ocultos. Dos para poder precargar el siguiente. -->
+  <div class="pl-frames" aria-hidden="true">
+    <iframe id="scw0" allow="autoplay" src="about:blank"></iframe>
+    <iframe id="scw1" allow="autoplay" src="about:blank"></iframe>
   </div>
-  <div class="pb-row" id="pbMarks"></div>
 </div>
 
 <script>
@@ -247,11 +328,14 @@ const TRACKS_URL_FALLBACK = 'https://aleventura.github.io/sc/tracks.json?t=' + D
 // URL del Apps Script deployment. Se pega despues del setup.
 const SYNC_URL = 'https://script.google.com/macros/s/AKfycby3uI-6sm_Q6igc4jmebxi9xz5s_DDWuidx1EIGWuAtRAUH0_hgx0p-EHK5g9lYSylJ/exec';
 const LS = 'sc_tracks_state_v1';
+// La cola es orden de reproducción, no curaduría: vive solo en este dispositivo
+// y no se sincroniza con el Sheet.
+const LS_QUEUE = 'sc_queue_v1';
 
 // Modo producción: carga tracks.json real y sincroniza con Google Sheet.
 // Versión del build. Subila cada vez que publiques para confirmar que
 // GitHub Pages ya sirve la última (se muestra arriba a la derecha).
-const APP_VERSION = 'v20';
+const APP_VERSION = 'v24';
 const DEV_MODE = false;
 const DEV_TRACKS = [
   {id:"davo--track1",u:"https://soundcloud.com/maccabihouse/daft-punk-hbfs-rafael-maccabi-edit",t:"Daft Punk - HBFS (Rafael Maccabi Edit)",a:"Maccabi House",d:"2026-06-15",r:3421,c:187,l:12450,g:"Indie Dance",dur:6.4,dl:"hypeddit",dlu:"https://hypeddit.com/example",cta:"davo",tipo:"REP",added:"2026-07-12"},
@@ -267,6 +351,7 @@ const DEV_TRACKS = [
 // ============================================================
 let TRACKS = [];
 let st = JSON.parse(localStorage.getItem(LS) || '{}');
+let queue = JSON.parse(localStorage.getItem(LS_QUEUE) || '[]');  // ids de tracks encolados
 // st = { <trackId>: 'g' | 'x' }
 
 let filterState = 'nuevos';
@@ -274,8 +359,6 @@ let filterAccount = null;  // cuenta seleccionada del dropdown o null
 let sortBy = 'fecha';
 let currentPlayingUrl = null;  // track cuyo widget está abierto (o null)
 let filteredTracks = [];       // lista visible actual (para playNext)
-let scWidget = null;           // instancia del Widget API (única, persistente)
-let widgetReady = false;       // el iframe del reproductor terminó de cargar
 let playerState = 'stopped';   // 'playing' | 'paused' | 'stopped'
 let lastSync = {kind:'', msg:''};  // último estado de sync (persiste entre renders)
 
@@ -375,7 +458,7 @@ function setState(id, s){
   save();
 
   // La reproducción NO se corta al marcar: el widget es persistente.
-  updatePlayerBar();
+  updatePlayerUI();
 
   const card = document.querySelector('.card[data-track-id="' + cssEscape(id) + '"]');
   if (leavesView && card) {
@@ -437,6 +520,13 @@ function render(){
     list.innerHTML = filtered.map(cardHTML).join('');
     list.querySelectorAll('[data-play]').forEach(el => {
       el.addEventListener('click', () => playTrack(el.dataset.play));
+    });
+    list.querySelectorAll('[data-queue]').forEach(el => {
+      el.addEventListener('click', () => {
+        queueFirst(el.dataset.queue);
+        el.textContent = '✓';
+        setTimeout(() => { el.textContent = '＋'; }, 900);
+      });
     });
     list.querySelectorAll('[data-mark]').forEach(el => {
       el.addEventListener('click', () => {
@@ -535,6 +625,15 @@ function esc(s){
     ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
 
+// Nombre legible del servicio de descarga a partir del campo dl
+function dlLabel(dl){
+  const labels = {
+    hypeddit: 'hypeddit', bandcamp: 'bandcamp', directa: 'descarga directa',
+    purchase_link: 'comprar', fanlink: 'fanlink', linktree: 'linktree', ninguna: ''
+  };
+  return labels[dl] !== undefined ? labels[dl] : (dl || 'link');
+}
+
 function cardHTML(t){
   const s = getState(t.id);
   const stateBadge = s === 'g' ? '<span class="badge state-g">❤ Descargar</span>'
@@ -557,11 +656,7 @@ function cardHTML(t){
     : '';
 
   // Link de descarga: muestra el servicio (hypeddit, bandcamp, etc.) en vez de "link" genérico
-  const dlLabels = {
-    hypeddit: 'hypeddit', bandcamp: 'bandcamp', directa: 'descarga directa',
-    purchase_link: 'comprar', fanlink: 'fanlink', linktree: 'linktree', ninguna: ''
-  };
-  const dlText = dlLabels[t.dl] !== undefined ? dlLabels[t.dl] : (t.dl || 'link');
+  const dlText = dlLabel(t.dl);
   const dlLink = (t.dlu && dlText)
     ? '<a class="dl-link" href="' + esc(t.dlu) + '" target="_blank" rel="noopener">' + esc(dlText) + '</a>'
     : '';
@@ -604,6 +699,7 @@ function cardHTML(t){
       ${stateBadge ? '<div class="badges">' + stateBadge + '</div>' : ''}
       <div class="actions">
         <button class="btn play" data-play="${esc(t.u)}">${isCurrent ? '♪ Sonando' : '▶ Play'}</button>
+        <button class="btn queue" data-queue="${esc(t.id)}" title="Poner a continuación">＋</button>
       </div>
     </div>
   `;
@@ -614,140 +710,278 @@ function cardHTML(t){
 // ============================================================
 
 // Opciones del widget (compacto, sin recomendaciones ni artwork)
+// Opciones del widget (invisible, así que el aspecto no importa)
 const WIDGET_OPTS = {
-  auto_play: true, show_artwork: false, show_comments: false, visual: false,
+  auto_play: false, show_artwork: false, show_comments: false, visual: false,
   buying: false, sharing: false, download: false, show_playcount: false,
   show_user: false, hide_related: true, show_teaser: false
 };
 
-// Engancha (o re-engancha) los eventos del widget. Hay que rellamarlo después
-// de cada load(), porque el widget pierde los handlers al cambiar de track.
-// Cada bind recibe un token; los handlers de binds anteriores quedan inertes.
-// Necesario porque unbind() del widget no limpia y READY puede disparar varias veces.
-let bindToken = 0;
-function bindWidgetEvents(){
-  if (!scWidget) return;
+// Dos widgets alternados: mientras uno suena, el otro precarga el siguiente.
+// Así el documento del próximo track ya existe cuando tocás ⏭, que es la
+// condición que iOS exige para dejar reproducir desde un gesto del usuario.
+const W = [
+  {id: 'scw0', w: null, url: null, ready: false, dur: 0},
+  {id: 'scw1', w: null, url: null, ready: false, dur: 0}
+];
+let active = 0;
+
+function otherIdx(){ return 1 - active; }
+
+function initWidgets(seedUrl, nextUrl){
+  if (!window.SC || !window.SC.Widget) return;
+  W.forEach((slot, i) => {
+    const iframe = document.getElementById(slot.id);
+    if (!iframe) return;
+    const url = i === 0 ? seedUrl : nextUrl;
+    if (!url) return;
+    iframe.src = widgetSrc(url);
+    slot.url = url;
+    slot.w = window.SC.Widget(iframe);
+    bindSlot(i);
+  });
+}
+
+function widgetSrc(url){
+  return 'https://w.soundcloud.com/player/?url=' + encodeURIComponent(url) +
+    '&auto_play=false&show_artwork=false&show_comments=false&visual=false' +
+    '&buying=false&sharing=false&download=false&show_playcount=false' +
+    '&show_user=false&hide_related=true&show_teaser=false';
+}
+
+// Engancha los eventos de un slot. Solo actúa si ese slot es el activo.
+function bindSlot(i){
+  const slot = W[i];
+  if (!slot.w) return;
   const E = window.SC.Widget.Events;
-  const my = ++bindToken;
-  scWidget.bind(E.PLAY,  () => {
-    if (my !== bindToken) return;
-    playerState = 'playing'; dbg.play++; showDebug();
+  slot.w.bind(E.READY, () => {
+    slot.ready = true;
+    slot.w.getDuration(d => { slot.dur = d || 0; if (i === active) renderTimes(0); });
   });
-  scWidget.bind(E.PAUSE, () => {
-    if (my !== bindToken) return;
-    playerState = 'paused'; dbg.pause++;
-    scWidget.getPosition(pos => { dbg.at = (pos / 1000).toFixed(1); showDebug(); });
-    showDebug();
+  slot.w.bind(E.PLAY, () => {
+    if (i !== active) { slot.w.pause(); return; }   // el precargado no debe sonar
+    playerState = 'playing'; updatePlayButtons();
   });
-  scWidget.bind(E.FINISH, () => {
-    if (my !== bindToken) return;
+  slot.w.bind(E.PAUSE, () => {
+    if (i !== active) return;
+    playerState = 'paused'; updatePlayButtons();
+  });
+  slot.w.bind(E.PLAY_PROGRESS, e => {
+    if (i !== active) return;
+    renderTimes(e && e.currentPosition ? e.currentPosition : 0);
+  });
+  slot.w.bind(E.FINISH, () => {
+    if (i !== active) return;
     playNext();
   });
 }
 
-// Diagnóstico: eventos reportados por el widget en el track actual
-let dbg = {play: 0, pause: 0, at: '-'};
-function showDebug(){
-  const el = document.getElementById('pbDebug');
-  if (el) el.textContent = '▶' + dbg.play + ' ⏸' + dbg.pause + ' @' + dbg.at;
+// Carga una URL en un slot (sin reproducir). Devuelve enseguida.
+function loadInto(i, url){
+  const slot = W[i];
+  if (!slot.w || !url || slot.url === url) return;
+  slot.url = url;
+  slot.ready = false;
+  slot.dur = 0;
+  slot.w.load(url, Object.assign({}, WIDGET_OPTS, {
+    callback: () => { bindSlot(i); slot.ready = true;
+      slot.w.getDuration(d => { slot.dur = d || 0; }); }
+  }));
 }
 
-// Crea el widget UNA sola vez. El iframe nunca se destruye: así conserva
-// la activación de audio que iOS concede al primer tap dentro del reproductor.
-function initWidget(seedUrl){
-  const iframe = document.getElementById('scWidget');
-  if (!iframe || !window.SC || !window.SC.Widget || !seedUrl) return;
-  const params = '&auto_play=false&show_artwork=false&show_comments=false&visual=false' +
-    '&buying=false&sharing=false&download=false&show_playcount=false' +
-    '&show_user=false&hide_related=true&show_teaser=false';
-  iframe.src = 'https://w.soundcloud.com/player/?url=' + encodeURIComponent(seedUrl) + params;
-  scWidget = window.SC.Widget(iframe);
-  scWidget.bind(window.SC.Widget.Events.READY, () => {
-    widgetReady = true;
-    bindWidgetEvents();
-  });
-}
+function currentWidget(){ return W[active].w; }
 
 function playTrack(url){
-  // Desbloquear el contexto de audio de iOS aprovechando el gesto del usuario
+  unlockAudio();
+
+  const other = otherIdx();
+
+  if (W[active].url === url && W[active].ready) {
+    // Ya está en el slot activo: solo reproducir (gesto directo, funciona en iOS)
+    W[active].w.play();
+  } else if (W[other].url === url) {
+    // Estaba precargado: cambiar de slot y reproducir. Este es el camino rápido.
+    if (W[active].w) W[active].w.pause();
+    active = other;
+    W[active].w.play();
+  } else {
+    // No estaba cargado: hay que cargarlo. En iOS esto no arranca solo,
+    // el documento nace después del gesto; queda listo para el botón ▶.
+    if (W[active].w) W[active].w.pause();
+    active = other;
+    loadInto(active, url);
+    setTimeout(() => { if (W[active].url === url && W[active].w) W[active].w.play(); }, 400);
+  }
+
+  currentPlayingUrl = url;
+  setMediaSession(url);
+  updatePlayerUI();
+  highlightPlayingCard();
+  preloadNext();
+}
+
+// Deja el siguiente track de la lista cargado en el slot inactivo
+// ---- Cola de reproducción ----
+function saveQueue(){ localStorage.setItem(LS_QUEUE, JSON.stringify(queue)); }
+
+// Agrega al INICIO de la cola (suena a continuación del actual).
+// Si ya estaba encolado, lo mueve al frente en vez de duplicarlo.
+function queueFirst(id){
+  queue = queue.filter(x => x !== id);
+  queue.unshift(id);
+  saveQueue(); renderQueue(); preloadNext();
+}
+
+function queueRemove(id){
+  queue = queue.filter(x => x !== id);
+  saveQueue(); renderQueue(); preloadNext();
+}
+
+function queueClear(){
+  queue = [];
+  saveQueue(); renderQueue(); preloadNext();
+}
+
+// Saca el primero de la cola y devuelve su track (o null si está vacía)
+function queueShift(){
+  while (queue.length) {
+    const id = queue.shift();
+    const t = TRACKS.find(x => x.id === id);
+    if (t) { saveQueue(); return t; }
+  }
+  saveQueue();
+  return null;
+}
+
+// El próximo track: primero la cola, si no el siguiente de la lista filtrada
+function peekNext(){
+  for (const id of queue) {
+    const t = TRACKS.find(x => x.id === id);
+    if (t) return t;
+  }
+  if (!currentPlayingUrl || !filteredTracks.length) return null;
+  const idx = filteredTracks.findIndex(t => t.u === currentPlayingUrl);
+  return idx === -1 ? filteredTracks[0] : (filteredTracks[idx + 1] || null);
+}
+
+function renderQueue(){
+  const box = document.getElementById('plQueue');
+  if (!box) return;
+  const items = queue.map(id => TRACKS.find(t => t.id === id)).filter(Boolean);
+  const badge = document.getElementById('plQueueCount');
+  if (badge) badge.textContent = items.length ? items.length : '';
+
+  if (!items.length) {
+    box.innerHTML = '<div class="q-empty">Cola vacía. Tocá ＋ en cualquier track para ponerlo a continuación.</div>';
+    return;
+  }
+  box.innerHTML =
+    '<div class="q-head"><span>A continuación (' + items.length + ')</span>' +
+    '<button class="q-clear" id="qClear">Vaciar</button></div>' +
+    items.map(t =>
+      '<div class="q-item"><div class="q-info" data-qplay="' + esc(t.id) + '">' +
+        '<div class="q-t">' + esc(t.t) + '</div>' +
+        '<div class="q-a">' + esc(t.a) + '</div></div>' +
+        '<button class="q-x" data-qdel="' + esc(t.id) + '" aria-label="Quitar">✕</button>' +
+      '</div>').join('');
+}
+
+function preloadNext(){
+  const next = peekNext();
+  if (next) loadInto(otherIdx(), next.u);
+}
+
+function unlockAudio(){
   try {
     const AC = window.AudioContext || window.webkitAudioContext;
     if (AC) {
       window._audioCtx = window._audioCtx || new AC();
       if (window._audioCtx.state === 'suspended') window._audioCtx.resume();
     }
-  } catch(e) { /* no soportado, seguir igual */ }
+  } catch(e) { /* no soportado */ }
+}
 
-  // Mismo track: alternar play/pausa
-  if (currentPlayingUrl === url && scWidget && widgetReady) {
-    if (playerState === 'playing') scWidget.pause();
-    else scWidget.play();
-    return;
-  }
-
-  currentPlayingUrl = url;
-  dbg = {play: 0, pause: 0, at: '-'};
-  showDebug();
-  // load() se llama SINCRÓNICAMENTE dentro del handler del tap: así el
-  // arranque queda dentro de la ventana de gesto que exige iOS.
-  // auto_play es el ÚNICO disparador: llamar play() además lo apaga (toggle).
-  if (scWidget && widgetReady) {
-    scWidget.load(url, Object.assign({}, WIDGET_OPTS, {
-      callback: () => {
-        // No re-enganchar acá: si el iframe recarga, READY vuelve a disparar
-        // y engancha solo. Rebindear acá duplicaba handlers.
-        scWidget.isPaused(paused => { if (paused) scWidget.play(); });
-      }
-    }));
-  }
-  setMediaSession(url);
-  updatePlayerBar();
-  highlightPlayingCard();
+function togglePlay(){
+  const w = currentWidget();
+  if (!w) return;
+  w.isPaused(paused => { if (paused) w.play(); else w.pause(); });
 }
 
 function setMediaSession(url){
   if (!('mediaSession' in navigator)) return;
   const track = TRACKS.find(t => t.u === url);
-  const title = track ? track.t : url.replace(/^https?:\/\/(www\.)?soundcloud\.com\//, '');
-  const artist = track ? track.a : 'SoundCloud';
+  if (!track) return;
   try {
     navigator.mediaSession.metadata = new MediaMetadata({
-      title: title, artist: artist, album: 'SoundCloud'
+      title: track.t, artist: track.a, album: 'SoundCloud'
     });
     navigator.mediaSession.setActionHandler('nexttrack', () => playNext());
     navigator.mediaSession.setActionHandler('previoustrack', () => playPrev());
     navigator.mediaSession.setActionHandler('seekforward', () => seekBy(30));
-    navigator.mediaSession.setActionHandler('play', () => { if (scWidget) scWidget.play(); });
-    navigator.mediaSession.setActionHandler('pause', () => { if (scWidget) scWidget.pause(); });
-  } catch(e) { /* handlers no soportados en algunos browsers */ }
+    navigator.mediaSession.setActionHandler('play', () => { const w = currentWidget(); if (w) w.play(); });
+    navigator.mediaSession.setActionHandler('pause', () => { const w = currentWidget(); if (w) w.pause(); });
+  } catch(e) { /* handlers no soportados */ }
 }
 
-// Muestra/actualiza la barra inferior con el track actual y sus marcas
-function updatePlayerBar(){
-  const bar = document.getElementById('playerBar');
+function mmss(ms){
+  const s = Math.max(0, Math.floor((ms || 0) / 1000));
+  return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
+}
+
+function renderTimes(pos){
+  const dur = W[active].dur || 0;
+  document.getElementById('plCur').textContent = mmss(pos);
+  document.getElementById('plDur').textContent = mmss(dur);
+  const pct = dur ? Math.min(100, (pos / dur) * 100) : 0;
+  document.getElementById('plFill').style.width = pct + '%';
+}
+
+function updatePlayButtons(){
+  const icon = playerState === 'playing' ? '⏸' : '▶';
+  document.getElementById('plPlayMini').textContent = icon;
+  document.getElementById('plPlayFull').textContent = icon;
+}
+
+// Rellena mini barra y panel expandido con el track actual
+function updatePlayerUI(){
+  const player = document.getElementById('player');
   const t = TRACKS.find(x => x.u === currentPlayingUrl);
   if (!t) {
-    bar.classList.remove('visible');
+    player.classList.remove('visible', 'open');
     syncPlayerHeight();
     return;
   }
-  document.getElementById('pbTitle').innerHTML =
-    esc(t.t) + ' <span class="pb-artist">· ' + esc(t.a) + '</span>';
+  document.getElementById('plMiniTitle').textContent = t.t;
+  document.getElementById('plMiniArtist').textContent = t.a;
+  document.getElementById('plFullTitle').textContent = t.t;
+
+  const dl = t.dlu ? '<a class="dl-link" href="' + esc(t.dlu) + '" target="_blank" rel="noopener">' +
+    esc(dlLabel(t.dl)) + '</a>' : '';
+  const tipo = t.tipo === 'UP' ? '<span class="badge tipo-up">UP</span>'
+    : t.tipo === 'REP' ? '<span class="badge tipo-rep">REP</span>' : '';
+  document.getElementById('plFullWho').innerHTML =
+    '<span class="name ' + (t.tipo === 'UP' ? 'artist-up' : 'reposter') + '">' +
+    esc(t.tipo === 'REP' ? (t.cta || t.a) : t.a) + '</span>' + tipo + dl;
+
   const s = getState(t.id);
-  document.getElementById('pbMarks').innerHTML =
+  document.getElementById('plMarks').innerHTML =
     '<button class="btn mark g2 ' + (s === 'g2' ? 'on' : '') + '" data-mark="' + esc(t.id) + '|g2">❤❤</button>' +
     '<button class="btn mark g '  + (s === 'g'  ? 'on' : '') + '" data-mark="' + esc(t.id) + '|g">❤</button>' +
     '<button class="btn mark dl ' + (s === 'dl' ? 'on' : '') + '" data-mark="' + esc(t.id) + '|dl">⬇</button>' +
     '<button class="btn mark x '  + (s === 'x'  ? 'on' : '') + '" data-mark="' + esc(t.id) + '|x">✕</button>';
-  bar.classList.add('visible');
+
+  player.classList.add('visible');
+  renderTimes(0);
+  updatePlayButtons();
   syncPlayerHeight();
 }
 
-// Reserva espacio abajo para que la barra no tape los últimos tracks
+// Reserva espacio abajo para que la mini barra no tape los últimos tracks
 function syncPlayerHeight(){
-  const bar = document.getElementById('playerBar');
-  if (!bar) return;
-  const h = bar.classList.contains('visible') ? bar.offsetHeight + 12 : 40;
+  const player = document.getElementById('player');
+  const mini = document.getElementById('plMini');
+  if (!player || !mini) return;
+  const h = player.classList.contains('visible') ? mini.offsetHeight + 14 : 40;
   document.documentElement.style.setProperty('--player-h', h + 'px');
 }
 
@@ -774,13 +1008,18 @@ function scrollToPlaying(){
 }
 
 function closePlayer(){
-  if (scWidget) scWidget.pause();
+  W.forEach(s => { if (s.w) s.w.pause(); });
   currentPlayingUrl = null;
-  updatePlayerBar();
+  document.getElementById('player').classList.remove('open');
+  updatePlayerUI();
   highlightPlayingCard();
 }
 
 function playNext(){
+  // La cola manda: si hay algo encolado, va eso antes que la lista
+  const queued = queueShift();
+  if (queued) { renderQueue(); playTrack(queued.u); return; }
+
   if (!currentPlayingUrl || !filteredTracks.length) return;
   const idx = filteredTracks.findIndex(t => t.u === currentPlayingUrl);
   if (idx === -1) { playTrack(filteredTracks[0].u); return; }
@@ -798,14 +1037,15 @@ function playPrev(){
 
 // Avanza N segundos desde la posición actual
 function seekBy(seconds){
-  if (!scWidget) return;
-  scWidget.getPosition(pos => {
+  const w = currentWidget();
+  if (!w) return;
+  w.getPosition(pos => {
     const target = Math.max(0, pos + seconds * 1000);
     // Pausar antes de saltar silencia el glitch de buffer que suena en iOS.
     // Se reanuda apenas el seek termina de posicionar.
-    scWidget.pause();
-    scWidget.seekTo(target);
-    setTimeout(() => { if (scWidget) scWidget.play(); }, 120);
+    w.pause();
+    w.seekTo(target);
+    setTimeout(() => w.play(), 120);
   });
 }
 
@@ -883,13 +1123,36 @@ window.addEventListener('scroll', onScroll, {passive: true});
 window.addEventListener('resize', () => { syncHeaderHeight(); syncPlayerHeight(); });
 
 // Controles de la barra de reproducción (se enganchan una sola vez)
-document.getElementById('pbClose').addEventListener('click', closePlayer);
-document.getElementById('pbPrev').addEventListener('click', () => { playPrev(); scrollToPlaying(); });
-document.getElementById('pbNext').addEventListener('click', () => { playNext(); scrollToPlaying(); });
-document.querySelectorAll('#playerBar [data-seek-by]').forEach(el => {
+// --- Controles del reproductor ---
+document.getElementById('plPlayMini').addEventListener('click', togglePlay);
+document.getElementById('plPlayFull').addEventListener('click', togglePlay);
+document.getElementById('plNextMini').addEventListener('click', () => { playNext(); scrollToPlaying(); });
+document.getElementById('plNext').addEventListener('click', () => { playNext(); scrollToPlaying(); });
+document.getElementById('plPrev').addEventListener('click', () => { playPrev(); scrollToPlaying(); });
+
+// Expandir / contraer el panel
+document.getElementById('plExpand').addEventListener('click', () => {
+  document.getElementById('player').classList.add('open');
+});
+document.getElementById('plCollapse').addEventListener('click', () => {
+  document.getElementById('player').classList.remove('open');
+});
+
+document.getElementById('plQueue').addEventListener('click', e => {
+  if (e.target.closest('#qClear')) { queueClear(); return; }
+  const del = e.target.closest('[data-qdel]');
+  if (del) { queueRemove(del.dataset.qdel); return; }
+  const play = e.target.closest('[data-qplay]');
+  if (play) {
+    const t = TRACKS.find(x => x.id === play.dataset.qplay);
+    if (t) { queueRemove(t.id); playTrack(t.u); }
+  }
+});
+
+document.querySelectorAll('#player [data-seek-by]').forEach(el => {
   el.addEventListener('click', () => seekBy(parseInt(el.dataset.seekBy, 10)));
 });
-document.getElementById('pbMarks').addEventListener('click', e => {
+document.getElementById('plMarks').addEventListener('click', e => {
   const btn = e.target.closest('[data-mark]');
   if (!btn) return;
   const [id, s] = btn.dataset.mark.split('|');
@@ -953,7 +1216,8 @@ if (DEV_MODE) {
   render();
   syncHeaderHeight();
   syncPlayerHeight();
-  initWidget(TRACKS[0] && TRACKS[0].u);
+  initWidgets(TRACKS[0] && TRACKS[0].u, TRACKS[1] && TRACKS[1].u);
+  renderQueue();
   pullState();
   setSync('ok', 'DEV_MODE: usando tracks de ejemplo');
 } else {
@@ -980,7 +1244,8 @@ if (DEV_MODE) {
       render();
       syncHeaderHeight();
       syncPlayerHeight();
-      initWidget(arr[0] && arr[0].u);
+      initWidgets(arr[0] && arr[0].u, arr[1] && arr[1].u);
+      renderQueue();
       pullState();
     })
     .catch(err => {
