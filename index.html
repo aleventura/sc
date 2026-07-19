@@ -248,7 +248,7 @@ const LS = 'sc_tracks_state_v1';
 // Modo producción: carga tracks.json real y sincroniza con Google Sheet.
 // Versión del build. Subila cada vez que publiques para confirmar que
 // GitHub Pages ya sirve la última (se muestra arriba a la derecha).
-const APP_VERSION = 'v18';
+const APP_VERSION = 'v19';
 const DEV_MODE = false;
 const DEV_TRACKS = [
   {id:"davo--track1",u:"https://soundcloud.com/maccabihouse/daft-punk-hbfs-rafael-maccabi-edit",t:"Daft Punk - HBFS (Rafael Maccabi Edit)",a:"Maccabi House",d:"2026-06-15",r:3421,c:187,l:12450,g:"Indie Dance",dur:6.4,dl:"hypeddit",dlu:"https://hypeddit.com/example",cta:"davo",tipo:"REP",added:"2026-07-12"},
@@ -619,17 +619,27 @@ const WIDGET_OPTS = {
 
 // Engancha (o re-engancha) los eventos del widget. Hay que rellamarlo después
 // de cada load(), porque el widget pierde los handlers al cambiar de track.
+// Cada bind recibe un token; los handlers de binds anteriores quedan inertes.
+// Necesario porque unbind() del widget no limpia y READY puede disparar varias veces.
+let bindToken = 0;
 function bindWidgetEvents(){
   if (!scWidget) return;
   const E = window.SC.Widget.Events;
-  scWidget.bind(E.PLAY,  () => { playerState = 'playing'; dbg.play++; showDebug(); });
+  const my = ++bindToken;
+  scWidget.bind(E.PLAY,  () => {
+    if (my !== bindToken) return;
+    playerState = 'playing'; dbg.play++; showDebug();
+  });
   scWidget.bind(E.PAUSE, () => {
+    if (my !== bindToken) return;
     playerState = 'paused'; dbg.pause++;
-    // Registrar en qué segundo se pausó: si es ~0, nunca llegó a sonar.
     scWidget.getPosition(pos => { dbg.at = (pos / 1000).toFixed(1); showDebug(); });
     showDebug();
   });
-  scWidget.bind(E.FINISH, () => { playNext(); });
+  scWidget.bind(E.FINISH, () => {
+    if (my !== bindToken) return;
+    playNext();
+  });
 }
 
 // Diagnóstico: eventos reportados por el widget en el track actual
