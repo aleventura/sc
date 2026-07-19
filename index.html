@@ -246,7 +246,7 @@ const LS = 'sc_tracks_state_v1';
 // Modo producción: carga tracks.json real y sincroniza con Google Sheet.
 // Versión del build. Subila cada vez que publiques para confirmar que
 // GitHub Pages ya sirve la última (se muestra arriba a la derecha).
-const APP_VERSION = 'v15';
+const APP_VERSION = 'v16';
 const DEV_MODE = false;
 const DEV_TRACKS = [
   {id:"davo--track1",u:"https://soundcloud.com/maccabihouse/daft-punk-hbfs-rafael-maccabi-edit",t:"Daft Punk - HBFS (Rafael Maccabi Edit)",a:"Maccabi House",d:"2026-06-15",r:3421,c:187,l:12450,g:"Indie Dance",dur:6.4,dl:"hypeddit",dlu:"https://hypeddit.com/example",cta:"davo",tipo:"REP",added:"2026-07-12"},
@@ -615,6 +615,17 @@ const WIDGET_OPTS = {
   show_user: false, hide_related: true, show_teaser: false
 };
 
+// Engancha (o re-engancha) los eventos del widget. Hay que rellamarlo después
+// de cada load(), porque el widget pierde los handlers al cambiar de track.
+function bindWidgetEvents(){
+  if (!scWidget) return;
+  const E = window.SC.Widget.Events;
+  try { scWidget.unbind(E.PLAY); scWidget.unbind(E.PAUSE); scWidget.unbind(E.FINISH); } catch(e) {}
+  scWidget.bind(E.PLAY,   () => { playerState = 'playing'; });
+  scWidget.bind(E.PAUSE,  () => { playerState = 'paused'; });
+  scWidget.bind(E.FINISH, () => { playNext(); });
+}
+
 // Crea el widget UNA sola vez. El iframe nunca se destruye: así conserva
 // la activación de audio que iOS concede al primer tap dentro del reproductor.
 function initWidget(seedUrl){
@@ -625,10 +636,10 @@ function initWidget(seedUrl){
     '&show_user=false&hide_related=true&show_teaser=false';
   iframe.src = 'https://w.soundcloud.com/player/?url=' + encodeURIComponent(seedUrl) + params;
   scWidget = window.SC.Widget(iframe);
-  scWidget.bind(window.SC.Widget.Events.READY, () => { widgetReady = true; });
-  scWidget.bind(window.SC.Widget.Events.PLAY, () => { playerState = 'playing'; });
-  scWidget.bind(window.SC.Widget.Events.PAUSE, () => { playerState = 'paused'; });
-  scWidget.bind(window.SC.Widget.Events.FINISH, () => { playNext(); });
+  scWidget.bind(window.SC.Widget.Events.READY, () => {
+    widgetReady = true;
+    bindWidgetEvents();
+  });
 }
 
 function playTrack(url){
@@ -651,9 +662,10 @@ function playTrack(url){
   currentPlayingUrl = url;
   // load() se llama SINCRÓNICAMENTE dentro del handler del tap: así el
   // arranque queda dentro de la ventana de gesto que exige iOS.
+  // auto_play es el ÚNICO disparador: llamar play() además lo apaga (toggle).
   if (scWidget && widgetReady) {
     scWidget.load(url, Object.assign({}, WIDGET_OPTS, {
-      callback: () => { if (scWidget) scWidget.play(); }
+      callback: bindWidgetEvents   // solo re-engancha eventos, NO llama play()
     }));
   }
   setMediaSession(url);
