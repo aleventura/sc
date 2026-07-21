@@ -2,6 +2,9 @@
 <html lang="es">
 <head>
 <meta charset="utf-8">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -144,7 +147,7 @@
   .pl-fill{height:100%;width:0;background:var(--acc);transition:width .25s linear}
 
   /* Mini barra */
-  .pl-mini{display:flex;align-items:center;gap:10px;
+  .pl-mini{display:flex;align-items:center;gap:10px;cursor:pointer;
     background:var(--card);border-top:1px solid var(--border);
     padding:8px 12px calc(8px + env(safe-area-inset-bottom));
     box-shadow:0 -4px 20px rgba(0,0,0,.45);position:relative;z-index:2}
@@ -223,6 +226,19 @@
   .card:nth-child(-n+40){animation:fade-in .2s ease-out both}
   .card{transition:border-color .2s ease}
   .card.playing{border-color:var(--acc)}
+  /* Card con ícono de play a la izquierda */
+  .card-main{display:flex;align-items:flex-start;gap:10px}
+  .card-play{flex:0 0 auto;width:38px;height:38px;border-radius:50%;
+    background:var(--btn);border:1px solid var(--border);color:var(--fg);
+    font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;
+    margin-top:2px;transition:background .2s ease,transform .1s ease}
+  .card-play:active{transform:scale(.94)}
+  .card-play.on{background:var(--acc);border-color:var(--acc);color:#fff}
+  .card-body{flex:1 1 auto;min-width:0}
+  .card-q{flex:0 0 auto;width:34px;height:34px;border-radius:8px;
+    background:var(--btn);border:1px solid var(--border);color:var(--fg);
+    font-size:16px;font-weight:700;cursor:pointer;margin-top:2px}
+  .card-q:active{background:var(--btn-hover)}
   /* Salida al marcar: colapsa altura + fade, los de abajo suben suave */
   .card.leaving{
     animation:none;
@@ -335,7 +351,7 @@ const LS_QUEUE = 'sc_queue_v1';
 // Modo producción: carga tracks.json real y sincroniza con Google Sheet.
 // Versión del build. Subila cada vez que publiques para confirmar que
 // GitHub Pages ya sirve la última (se muestra arriba a la derecha).
-const APP_VERSION = 'v24';
+const APP_VERSION = 'v26';
 const DEV_MODE = false;
 const DEV_TRACKS = [
   {id:"davo--track1",u:"https://soundcloud.com/maccabihouse/daft-punk-hbfs-rafael-maccabi-edit",t:"Daft Punk - HBFS (Rafael Maccabi Edit)",a:"Maccabi House",d:"2026-06-15",r:3421,c:187,l:12450,g:"Indie Dance",dur:6.4,dl:"hypeddit",dlu:"https://hypeddit.com/example",cta:"davo",tipo:"REP",added:"2026-07-12"},
@@ -683,23 +699,26 @@ function cardHTML(t){
   }
 
   const isCurrent = t.u === currentPlayingUrl;
+  const playing = isCurrent && playerState === 'playing';
 
   return `
     <div class="card ${isCurrent ? 'playing' : ''}" data-track-id="${esc(t.id)}">
-      <div class="title">${esc(t.t)}</div>
-      ${whoHTML}
-      <div class="meta">
-        <span>${esc(t.d)}</span>
-        ${t.added ? '<span title="Agregado al catálogo">+ ' + esc(t.added) + '</span>' : ''}
-        <span>♻ ${fmt(t.r)}</span>
-        <span>💬 ${fmt(t.c)}</span>
-        ${t.dur ? '<span>' + t.dur + 'min</span>' : ''}
-        ${t.g && t.g !== '-' ? '<span>' + esc(t.g) + '</span>' : ''}
-      </div>
-      ${stateBadge ? '<div class="badges">' + stateBadge + '</div>' : ''}
-      <div class="actions">
-        <button class="btn play" data-play="${esc(t.u)}">${isCurrent ? '♪ Sonando' : '▶ Play'}</button>
-        <button class="btn queue" data-queue="${esc(t.id)}" title="Poner a continuación">＋</button>
+      <div class="card-main">
+        <button class="card-play ${isCurrent ? 'on' : ''}" data-play="${esc(t.u)}" aria-label="Reproducir">${playing ? '⏸' : '▶'}</button>
+        <div class="card-body">
+          <div class="title">${esc(t.t)}</div>
+          ${whoHTML}
+          <div class="meta">
+            <span>${esc(t.d)}</span>
+            ${t.added ? '<span title="Agregado al catálogo">+ ' + esc(t.added) + '</span>' : ''}
+            <span>♻ ${fmt(t.r)}</span>
+            <span>💬 ${fmt(t.c)}</span>
+            ${t.dur ? '<span>' + t.dur + 'min</span>' : ''}
+            ${t.g && t.g !== '-' ? '<span>' + esc(t.g) + '</span>' : ''}
+          </div>
+          ${stateBadge ? '<div class="badges">' + stateBadge + '</div>' : ''}
+        </div>
+        <button class="card-q" data-queue="${esc(t.id)}" title="Poner a continuación">＋</button>
       </div>
     </div>
   `;
@@ -793,6 +812,12 @@ function currentWidget(){ return W[active].w; }
 
 function playTrack(url){
   unlockAudio();
+
+  // Si es el track que ya está sonando, alternar play/pausa
+  if (url === currentPlayingUrl && W[active].url === url && W[active].ready) {
+    togglePlay();
+    return;
+  }
 
   const other = otherIdx();
 
@@ -940,6 +965,8 @@ function updatePlayButtons(){
   const icon = playerState === 'playing' ? '⏸' : '▶';
   document.getElementById('plPlayMini').textContent = icon;
   document.getElementById('plPlayFull').textContent = icon;
+  const card = document.querySelector('.card.playing .card-play');
+  if (card) card.textContent = icon;
 }
 
 // Rellena mini barra y panel expandido con el track actual
@@ -989,16 +1016,16 @@ function syncPlayerHeight(){
 function highlightPlayingCard(){
   document.querySelectorAll('.card.playing').forEach(c => {
     c.classList.remove('playing');
-    const b = c.querySelector('.btn.play');
-    if (b) b.textContent = '▶ Play';
+    const b = c.querySelector('.card-play');
+    if (b) { b.classList.remove('on'); b.textContent = '▶'; }
   });
   const t = TRACKS.find(x => x.u === currentPlayingUrl);
   if (!t) return;
   const card = document.querySelector('.card[data-track-id="' + cssEscape(t.id) + '"]');
   if (!card) return;
   card.classList.add('playing');
-  const b = card.querySelector('.btn.play');
-  if (b) b.textContent = '♪ Sonando';
+  const b = card.querySelector('.card-play');
+  if (b) { b.classList.add('on'); b.textContent = playerState === 'playing' ? '⏸' : '▶'; }
 }
 
 // Lleva la lista hasta la card que se está reproduciendo
@@ -1130,8 +1157,9 @@ document.getElementById('plNextMini').addEventListener('click', () => { playNext
 document.getElementById('plNext').addEventListener('click', () => { playNext(); scrollToPlaying(); });
 document.getElementById('plPrev').addEventListener('click', () => { playPrev(); scrollToPlaying(); });
 
-// Expandir / contraer el panel
-document.getElementById('plExpand').addEventListener('click', () => {
+// Expandir tocando cualquier parte de la mini barra, salvo play y siguiente
+document.getElementById('plMini').addEventListener('click', e => {
+  if (e.target.closest('#plPlayMini') || e.target.closest('#plNextMini')) return;
   document.getElementById('player').classList.add('open');
 });
 document.getElementById('plCollapse').addEventListener('click', () => {
