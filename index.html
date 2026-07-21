@@ -379,7 +379,7 @@ const LS_QUEUE = 'sc_queue_v1';
 // Modo producción: carga tracks.json real y sincroniza con Google Sheet.
 // Versión del build. Subila cada vez que publiques para confirmar que
 // GitHub Pages ya sirve la última (se muestra arriba a la derecha).
-const APP_VERSION = 'v32';
+const APP_VERSION = 'v33';
 const DEV_MODE = false;
 const DEV_TRACKS = [
   {id:"davo--track1",u:"https://soundcloud.com/maccabihouse/daft-punk-hbfs-rafael-maccabi-edit",t:"Daft Punk - HBFS (Rafael Maccabi Edit)",a:"Maccabi House",d:"2026-06-15",r:3421,c:187,l:12450,g:"Indie Dance",dur:6.4,dl:"hypeddit",dlu:"https://hypeddit.com/example",cta:"davo",tipo:"REP",added:"2026-07-12"},
@@ -780,8 +780,8 @@ const WIDGET_OPTS = {
 // Así el documento del próximo track ya existe cuando tocás ⏭, que es la
 // condición que iOS exige para dejar reproducir desde un gesto del usuario.
 const W = [
-  {id: 'scw0', w: null, url: null, ready: false, dur: 0},
-  {id: 'scw1', w: null, url: null, ready: false, dur: 0}
+  {id: 'scw0', w: null, url: null, ready: false, dur: 0, bound: false, playOnReady: false},
+  {id: 'scw1', w: null, url: null, ready: false, dur: 0, bound: false, playOnReady: false}
 ];
 let active = 0;
 
@@ -808,14 +808,20 @@ function widgetSrc(url){
     '&show_user=false&hide_related=true&show_teaser=false';
 }
 
-// Engancha los eventos de un slot. Solo actúa si ese slot es el activo.
+// Engancha los eventos de un slot UNA sola vez. Los binds sobreviven a load().
 function bindSlot(i){
   const slot = W[i];
-  if (!slot.w) return;
+  if (!slot.w || slot.bound) return;
+  slot.bound = true;
   const E = window.SC.Widget.Events;
   slot.w.bind(E.READY, () => {
     slot.ready = true;
     slot.w.getDuration(d => { slot.dur = d || 0; if (i === active) renderTimes(0); });
+    // Si se cargó para reproducir de inmediato (⏭ o cambio de track), hacerlo ahora
+    if (slot.playOnReady) {
+      slot.playOnReady = false;
+      if (i === active) slot.w.play();
+    }
   });
   slot.w.bind(E.PLAY, () => {
     if (i !== active) { slot.w.pause(); return; }   // el precargado no debe sonar
@@ -835,22 +841,16 @@ function bindSlot(i){
   });
 }
 
-// Carga una URL en un slot y reproduce apenas el load confirma.
+// Carga una URL en un slot y reproduce cuando queda lista.
+// Usa un flag playOnReady + el evento READY, más confiable que el callback de load().
 function loadAndPlay(i, url){
   const slot = W[i];
   if (!slot.w || !url) return;
   slot.url = url;
   slot.ready = false;
   slot.dur = 0;
-  slot.w.load(url, Object.assign({}, WIDGET_OPTS, {
-    callback: () => {
-      bindSlot(i);
-      slot.ready = true;
-      slot.w.getDuration(d => { slot.dur = d || 0; if (i === active) renderTimes(0); });
-      // Reproducir solo si este sigue siendo el track vigente
-      if (i === active && slot.url === url) slot.w.play();
-    }
-  }));
+  slot.playOnReady = true;
+  slot.w.load(url, WIDGET_OPTS);
 }
 
 // Carga una URL en un slot (sin reproducir). Devuelve enseguida.
@@ -860,10 +860,8 @@ function loadInto(i, url){
   slot.url = url;
   slot.ready = false;
   slot.dur = 0;
-  slot.w.load(url, Object.assign({}, WIDGET_OPTS, {
-    callback: () => { bindSlot(i); slot.ready = true;
-      slot.w.getDuration(d => { slot.dur = d || 0; }); }
-  }));
+  slot.playOnReady = false;
+  slot.w.load(url, WIDGET_OPTS);
 }
 
 function currentWidget(){ return W[active].w; }
@@ -1351,6 +1349,12 @@ function populateAccountsDropdown(){
 // ============================================================
 // INIT
 // ============================================================
+// Captura de errores visible (útil para diagnosticar en el iPhone sin consola)
+window.addEventListener('error', e => {
+  const bar = document.getElementById('sync');
+  if (bar) { bar.className = 'stats-sync err'; bar.textContent = ' · JS: ' + (e.message || 'error'); }
+});
+
 document.getElementById('appVersion').textContent = APP_VERSION;
 
 if (DEV_MODE) {
