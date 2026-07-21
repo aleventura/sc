@@ -259,7 +259,9 @@
   .card-body{flex:1 1 auto;min-width:0}
   .card-q{flex:0 0 auto;width:34px;height:34px;border-radius:8px;
     background:var(--btn);border:1px solid var(--border);color:var(--fg);
-    font-size:16px;font-weight:700;cursor:pointer;margin-top:2px}
+    font-size:16px;font-weight:700;cursor:pointer;margin-top:2px;
+    transition:background .2s ease,color .2s ease,border-color .2s ease}
+  .card-q.queued{background:var(--ok);border-color:var(--ok);color:#0e0e10}
   .card-q:active{background:var(--btn-hover)}
   /* Salida al marcar: colapsa altura + fade, los de abajo suben suave */
   .card.leaving{
@@ -377,7 +379,7 @@ const LS_QUEUE = 'sc_queue_v1';
 // Modo producción: carga tracks.json real y sincroniza con Google Sheet.
 // Versión del build. Subila cada vez que publiques para confirmar que
 // GitHub Pages ya sirve la última (se muestra arriba a la derecha).
-const APP_VERSION = 'v28';
+const APP_VERSION = 'v30';
 const DEV_MODE = false;
 const DEV_TRACKS = [
   {id:"davo--track1",u:"https://soundcloud.com/maccabihouse/daft-punk-hbfs-rafael-maccabi-edit",t:"Daft Punk - HBFS (Rafael Maccabi Edit)",a:"Maccabi House",d:"2026-06-15",r:3421,c:187,l:12450,g:"Indie Dance",dur:6.4,dl:"hypeddit",dlu:"https://hypeddit.com/example",cta:"davo",tipo:"REP",added:"2026-07-12"},
@@ -564,15 +566,14 @@ function render(){
       el.addEventListener('click', () => playTrack(el.dataset.play));
     });
     list.querySelectorAll('[data-queue]').forEach(el => {
-      // ✓ permanente mientras el track siga en la cola
-      if (queue.includes(el.dataset.queue)) el.textContent = '✓';
+      setQueueBtn(el, queue.includes(el.dataset.queue));
       el.addEventListener('click', () => {
         if (queue.includes(el.dataset.queue)) {
           queueRemove(el.dataset.queue);
-          el.textContent = '＋';
+          setQueueBtn(el, false);
         } else {
           queueFirst(el.dataset.queue);
-          el.textContent = '✓';
+          setQueueBtn(el, true);
         }
       });
     });
@@ -680,6 +681,12 @@ function dlLabel(dl){
     purchase_link: 'comprar', fanlink: 'fanlink', linktree: 'linktree', ninguna: ''
   };
   return labels[dl] !== undefined ? labels[dl] : (dl || 'link');
+}
+
+// Setea el botón de encolar según si el track está en la cola
+function setQueueBtn(el, queued){
+  el.textContent = queued ? '✓' : '＋';
+  el.classList.toggle('queued', queued);
 }
 
 function cardHTML(t){
@@ -871,6 +878,7 @@ function playTrack(url){
   }
 
   currentPlayingUrl = url;
+  playerState = 'playing'; // optimista: si iOS no arranca, el evento PAUSE lo corrige
   setMediaSession(url);
   updatePlayerUI();
   highlightPlayingCard();
@@ -924,7 +932,7 @@ function peekNext(){
 function renderQueue(){
   // Mantener sincronizados los botones ＋/✓ de las cards visibles
   document.querySelectorAll('.card [data-queue]').forEach(el => {
-    el.textContent = queue.includes(el.dataset.queue) ? '✓' : '＋';
+    setQueueBtn(el, queue.includes(el.dataset.queue));
   });
   const box = document.getElementById('plQueue');
   if (!box) return;
@@ -950,7 +958,13 @@ function renderQueue(){
       '</div>').join('');
 }
 
+// Precarga del siguiente track en el 2º iframe. Da arranque sin tap en iOS,
+// pero hace que dos widgets descarguen audio a la vez, lo que puede saturar
+// el WiFi de CarPlay inalámbrico y distorsionar. Poné false para probar.
+const PRELOAD_NEXT = false;
+
 function preloadNext(){
+  if (!PRELOAD_NEXT) return;
   const next = peekNext();
   if (next) loadInto(otherIdx(), next.u);
 }
@@ -1262,7 +1276,12 @@ document.getElementById('plMarks').addEventListener('click', e => {
   const btn = e.target.closest('[data-mark]');
   if (!btn) return;
   const [id, s] = btn.dataset.mark.split('|');
+  const t = TRACKS.find(x => x.id === id);
+  const isCurrent = t && t.u === currentPlayingUrl;
+  // Descartar o marcar como descargado el track actual: avanzar al siguiente
+  const advances = isCurrent && (s === 'x' || s === 'dl') && getState(id) !== s;
   setState(id, s);
+  if (advances) { playNext(); scrollToPlaying(); }
 });
 
 document.getElementById('sortFilters').addEventListener('click', e => {
