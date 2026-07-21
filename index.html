@@ -379,7 +379,7 @@ const LS_QUEUE = 'sc_queue_v1';
 // Modo producción: carga tracks.json real y sincroniza con Google Sheet.
 // Versión del build. Subila cada vez que publiques para confirmar que
 // GitHub Pages ya sirve la última (se muestra arriba a la derecha).
-const APP_VERSION = 'v30';
+const APP_VERSION = 'v31';
 const DEV_MODE = false;
 const DEV_TRACKS = [
   {id:"davo--track1",u:"https://soundcloud.com/maccabihouse/daft-punk-hbfs-rafael-maccabi-edit",t:"Daft Punk - HBFS (Rafael Maccabi Edit)",a:"Maccabi House",d:"2026-06-15",r:3421,c:187,l:12450,g:"Indie Dance",dur:6.4,dl:"hypeddit",dlu:"https://hypeddit.com/example",cta:"davo",tipo:"REP",added:"2026-07-12"},
@@ -834,6 +834,24 @@ function bindSlot(i){
   });
 }
 
+// Carga una URL en un slot y reproduce apenas el load confirma.
+function loadAndPlay(i, url){
+  const slot = W[i];
+  if (!slot.w || !url) return;
+  slot.url = url;
+  slot.ready = false;
+  slot.dur = 0;
+  slot.w.load(url, Object.assign({}, WIDGET_OPTS, {
+    callback: () => {
+      bindSlot(i);
+      slot.ready = true;
+      slot.w.getDuration(d => { slot.dur = d || 0; if (i === active) renderTimes(0); });
+      // Reproducir solo si este sigue siendo el track vigente
+      if (i === active && slot.url === url) slot.w.play();
+    }
+  }));
+}
+
 // Carga una URL en un slot (sin reproducir). Devuelve enseguida.
 function loadInto(i, url){
   const slot = W[i];
@@ -869,12 +887,12 @@ function playTrack(url){
     active = other;
     W[active].w.play();
   } else {
-    // No estaba cargado: hay que cargarlo. En iOS esto no arranca solo,
-    // el documento nace después del gesto; queda listo para el botón ▶.
+    // No estaba precargado: cargar y reproducir cuando el load confirme.
+    // Disparar en el callback (no a tiempo fijo) evita que quede en 0:00
+    // si el documento tarda más de lo previsto.
     if (W[active].w) W[active].w.pause();
     active = other;
-    loadInto(active, url);
-    setTimeout(() => { if (W[active].url === url && W[active].w) W[active].w.play(); }, 400);
+    loadAndPlay(active, url);
   }
 
   currentPlayingUrl = url;
