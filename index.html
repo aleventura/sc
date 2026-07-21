@@ -379,7 +379,7 @@ const LS_QUEUE = 'sc_queue_v1';
 // Modo producción: carga tracks.json real y sincroniza con Google Sheet.
 // Versión del build. Subila cada vez que publiques para confirmar que
 // GitHub Pages ya sirve la última (se muestra arriba a la derecha).
-const APP_VERSION = 'v31';
+const APP_VERSION = 'v32';
 const DEV_MODE = false;
 const DEV_TRACKS = [
   {id:"davo--track1",u:"https://soundcloud.com/maccabihouse/daft-punk-hbfs-rafael-maccabi-edit",t:"Daft Punk - HBFS (Rafael Maccabi Edit)",a:"Maccabi House",d:"2026-06-15",r:3421,c:187,l:12450,g:"Indie Dance",dur:6.4,dl:"hypeddit",dlu:"https://hypeddit.com/example",cta:"davo",tipo:"REP",added:"2026-07-12"},
@@ -404,6 +404,7 @@ let sortBy = 'fecha';
 let currentPlayingUrl = null;  // track cuyo widget está abierto (o null)
 let filteredTracks = [];       // lista visible actual (para playNext)
 let playerState = 'stopped';   // 'playing' | 'paused' | 'stopped'
+let seeking = false;           // el usuario está arrastrando la barra de progreso
 let lastSync = {kind:'', msg:''};  // último estado de sync (persiste entre renders)
 
 // ============================================================
@@ -1232,7 +1233,6 @@ document.getElementById('plPrev').addEventListener('click', () => { playPrev(); 
 
 // Expandir tocando cualquier parte de la mini barra, salvo play y siguiente
 // --- Barra de progreso seekable ---
-let seeking = false;
 (function initSeekbar(){
   const track = document.getElementById('plTrack');
   const fill = document.getElementById('plTrackFill');
