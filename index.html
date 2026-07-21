@@ -137,21 +137,28 @@
   /* Barra de reproducción fija abajo (estilo Spotify/SoundCloud).
      El iframe vive acá siempre y nunca se destruye: así conserva la
      activación de audio de iOS y los siguientes tracks arrancan solos. */
-  /* ---- Reproductor propio (mini barra + panel expandido) ---- */
-  .player{position:fixed;left:0;right:0;bottom:0;z-index:30;
-    transform:translateY(115%);transition:transform .3s ease}
-  .player.visible{transform:translateY(0)}
+  /* ---- Reproductor propio (mini barra + panel expandido) ----
+     El contenedor NO lleva transform: un transform en el ancestro rompe
+     position:fixed en los hijos, y el panel quedaba atrapado en la franja
+     de la mini barra sin poder subir. */
+  .player{position:fixed;left:0;right:0;bottom:0;z-index:30;pointer-events:none}
+  .player > *{pointer-events:auto}
 
   /* Barra de progreso, arriba de todo el reproductor */
-  .pl-progress{height:3px;background:var(--border);position:relative;z-index:2}
+  .pl-progress{height:3px;background:var(--border);position:relative;z-index:2;
+    transform:translateY(115%);transition:transform .3s ease}
+  .player.visible .pl-progress{transform:translateY(0)}
+  .player.open .pl-progress{opacity:0}
   .pl-fill{height:100%;width:0;background:var(--acc);transition:width .25s linear}
 
-  /* Mini barra */
+  /* Mini barra: su propio deslizamiento */
   .pl-mini{display:flex;align-items:center;gap:10px;cursor:pointer;
     background:var(--card);border-top:1px solid var(--border);
     padding:8px 12px calc(8px + env(safe-area-inset-bottom));
-    box-shadow:0 -4px 20px rgba(0,0,0,.45);position:relative;z-index:2}
-  .player.open .pl-mini{opacity:0;pointer-events:none}
+    box-shadow:0 -4px 20px rgba(0,0,0,.45);position:relative;z-index:2;
+    transform:translateY(115%);transition:transform .3s ease}
+  .player.visible .pl-mini{transform:translateY(0)}
+  .player.open .pl-mini{transform:translateY(115%)}
   .pl-info{flex:1 1 auto;min-width:0;cursor:pointer}
   .pl-t{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .pl-a{font-size:11px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -161,11 +168,11 @@
   .pl-round:active{transform:scale(.94)}
   .pl-round.ghost{background:var(--btn);border:1px solid var(--border);color:var(--fg)}
 
-  /* Panel expandido */
+  /* Panel expandido: fixed real (el contenedor ya no tiene transform) */
   .pl-full{position:fixed;left:0;right:0;bottom:0;top:0;background:var(--bg);
     display:flex;flex-direction:column;
     padding:env(safe-area-inset-top) 16px calc(16px + env(safe-area-inset-bottom));
-    transform:translateY(100%);transition:transform .3s ease;z-index:1}
+    transform:translateY(100%);transition:transform .3s ease;z-index:40}
   .player.open .pl-full{transform:translateY(0)}
   .pl-full-head{display:flex;justify-content:center;padding:8px 0}
   .pl-collapse{background:none;border:0;color:var(--dim);font-size:22px;
@@ -201,12 +208,13 @@
   .pl-full-who{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:13px}
   .pl-times{display:flex;justify-content:space-between;font-size:11px;
     color:var(--dim);font-variant-numeric:tabular-nums}
-  .pl-row{display:flex;gap:8px}
-  .pl-row .btn{flex:1 1 0}
-  .pl-row .btn.nav{flex:0 0 64px;font-size:16px}
+  .pl-row{display:flex;gap:6px}
+  .pl-row .btn{flex:1 1 0;min-width:0;padding:12px 4px}
+  .pl-row .btn.nav{flex:0 0 56px;font-size:16px}
   .pl-row .btn.pl-play{background:var(--acc);border-color:var(--acc);color:#fff;
     font-size:18px;font-weight:700;padding:14px 6px}
-  .pl-row .btn.mark{padding:14px 6px;font-size:16px}
+  .pl-row .btn.mark{padding:14px 4px;font-size:15px}
+  .pl-row .btn.seek{padding:12px 4px;font-size:13px}
 
   /* Los iframes de SoundCloud quedan ocultos pero presentes:
      display:none haría que iOS suspenda el audio. */
@@ -351,7 +359,7 @@ const LS_QUEUE = 'sc_queue_v1';
 // Modo producción: carga tracks.json real y sincroniza con Google Sheet.
 // Versión del build. Subila cada vez que publiques para confirmar que
 // GitHub Pages ya sirve la última (se muestra arriba a la derecha).
-const APP_VERSION = 'v26';
+const APP_VERSION = 'v27';
 const DEV_MODE = false;
 const DEV_TRACKS = [
   {id:"davo--track1",u:"https://soundcloud.com/maccabihouse/daft-punk-hbfs-rafael-maccabi-edit",t:"Daft Punk - HBFS (Rafael Maccabi Edit)",a:"Maccabi House",d:"2026-06-15",r:3421,c:187,l:12450,g:"Indie Dance",dur:6.4,dl:"hypeddit",dlu:"https://hypeddit.com/example",cta:"davo",tipo:"REP",added:"2026-07-12"},
@@ -538,10 +546,16 @@ function render(){
       el.addEventListener('click', () => playTrack(el.dataset.play));
     });
     list.querySelectorAll('[data-queue]').forEach(el => {
+      // ✓ permanente mientras el track siga en la cola
+      if (queue.includes(el.dataset.queue)) el.textContent = '✓';
       el.addEventListener('click', () => {
-        queueFirst(el.dataset.queue);
-        el.textContent = '✓';
-        setTimeout(() => { el.textContent = '＋'; }, 900);
+        if (queue.includes(el.dataset.queue)) {
+          queueRemove(el.dataset.queue);
+          el.textContent = '＋';
+        } else {
+          queueFirst(el.dataset.queue);
+          el.textContent = '✓';
+        }
       });
     });
     list.querySelectorAll('[data-mark]').forEach(el => {
@@ -890,6 +904,10 @@ function peekNext(){
 }
 
 function renderQueue(){
+  // Mantener sincronizados los botones ＋/✓ de las cards visibles
+  document.querySelectorAll('.card [data-queue]').forEach(el => {
+    el.textContent = queue.includes(el.dataset.queue) ? '✓' : '＋';
+  });
   const box = document.getElementById('plQueue');
   if (!box) return;
   const items = queue.map(id => TRACKS.find(t => t.id === id)).filter(Boolean);
