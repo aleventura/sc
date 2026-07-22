@@ -279,6 +279,12 @@
                margin .26s ease,padding .26s ease,border-width .26s ease;
   }
   .empty{padding:40px 20px;text-align:center;color:var(--dim)}
+  .errbar{position:fixed;left:0;right:0;top:0;z-index:100;background:var(--no);
+    color:#fff;font-size:11px;padding:6px 10px;display:none;
+    white-space:pre-wrap;word-break:break-word}
+  .errbar.on{display:block}
+  .pl-debug{font-size:10px;color:var(--dim);font-family:monospace;
+    padding:2px 0;white-space:pre-wrap}
 </style>
 </head>
 <body>
@@ -311,6 +317,7 @@
   </div>
 </header>
 
+<div class="errbar" id="errbar"></div>
 <div class="list" id="list"></div>
 
 <div class="player" id="player">
@@ -352,6 +359,7 @@
         <button class="btn seek" data-seek-by="60">+60</button>
       </div>
       <div class="pl-row" id="plMarks"></div>
+      <div class="pl-debug" id="plDebug"></div>
     </div>
   </div>
 
@@ -380,7 +388,7 @@ const LS_QUEUE = 'sc_queue_v1';
 // Modo producción: carga tracks.json real y sincroniza con Google Sheet.
 // Versión del build. Subila cada vez que publiques para confirmar que
 // GitHub Pages ya sirve la última (se muestra arriba a la derecha).
-const APP_VERSION = 'v40';
+const APP_VERSION = 'v41';
 const DEV_MODE = false;
 const DEV_TRACKS = [
   {id:"davo--track1",u:"https://soundcloud.com/maccabihouse/daft-punk-hbfs-rafael-maccabi-edit",t:"Daft Punk - HBFS (Rafael Maccabi Edit)",a:"Maccabi House",d:"2026-06-15",r:3421,c:187,l:12450,g:"Indie Dance",dur:6.4,dl:"hypeddit",dlu:"https://hypeddit.com/example",cta:"davo",tipo:"REP",added:"2026-07-12"},
@@ -1321,6 +1329,28 @@ function populateAccountsDropdown(){
 // ============================================================
 // INIT
 // ============================================================
+// --- Diagnóstico ---
+function showErr(msg){
+  const b = document.getElementById('errbar');
+  if (b) { b.className = 'errbar on'; b.textContent = msg; }
+}
+window.addEventListener('error', e =>
+  showErr('JS: ' + (e.message || '?') + ' @' + (e.lineno || '?')));
+window.addEventListener('unhandledrejection', e =>
+  showErr('PROMISE: ' + (e.reason && e.reason.message ? e.reason.message : e.reason)));
+
+// Estado de los slots, refrescado cada segundo
+setInterval(() => {
+  const el = document.getElementById('plDebug');
+  if (!el) return;
+  const cur = (currentPlayingUrl || '').split('/').pop().slice(0, 18);
+  el.textContent = W.map((s, i) =>
+    (i === active ? '▶' : ' ') + i +
+    ' rdy:' + (s.ready ? 1 : 0) +
+    ' ' + (s.url || '-').split('/').pop().slice(0, 18)
+  ).join('\n') + '\nactual: ' + cur;
+}, 1000);
+
 document.getElementById('appVersion').textContent = APP_VERSION;
 
 if (DEV_MODE) {
