@@ -379,7 +379,7 @@ const LS_QUEUE = 'sc_queue_v1';
 // Modo producción: carga tracks.json real y sincroniza con Google Sheet.
 // Versión del build. Subila cada vez que publiques para confirmar que
 // GitHub Pages ya sirve la última (se muestra arriba a la derecha).
-const APP_VERSION = 'v35-rollback';
+const APP_VERSION = 'v36';
 const DEV_MODE = false;
 const DEV_TRACKS = [
   {id:"davo--track1",u:"https://soundcloud.com/maccabihouse/daft-punk-hbfs-rafael-maccabi-edit",t:"Daft Punk - HBFS (Rafael Maccabi Edit)",a:"Maccabi House",d:"2026-06-15",r:3421,c:187,l:12450,g:"Indie Dance",dur:6.4,dl:"hypeddit",dlu:"https://hypeddit.com/example",cta:"davo",tipo:"REP",added:"2026-07-12"},
@@ -404,7 +404,6 @@ let sortBy = 'fecha';
 let currentPlayingUrl = null;  // track cuyo widget está abierto (o null)
 let filteredTracks = [];       // lista visible actual (para playNext)
 let playerState = 'stopped';   // 'playing' | 'paused' | 'stopped'
-let seeking = false;           // el usuario está arrastrando la barra de progreso
 let lastSync = {kind:'', msg:''};  // último estado de sync (persiste entre renders)
 
 // ============================================================
@@ -808,7 +807,7 @@ function widgetSrc(url){
     '&show_user=false&hide_related=true&show_teaser=false';
 }
 
-// Engancha los eventos de un slot (comportamiento v27).
+// Engancha los eventos de un slot. Solo actúa si ese slot es el activo.
 function bindSlot(i){
   const slot = W[i];
   if (!slot.w) return;
@@ -835,7 +834,7 @@ function bindSlot(i){
   });
 }
 
-// Carga una URL en un slot (sin reproducir). Comportamiento v27.
+// Carga una URL en un slot (sin reproducir). Devuelve enseguida.
 function loadInto(i, url){
   const slot = W[i];
   if (!slot.w || !url || slot.url === url) return;
@@ -870,7 +869,8 @@ function playTrack(url){
     active = other;
     W[active].w.play();
   } else {
-    // No estaba cargado: cargar y reproducir tras un margen (comportamiento v27)
+    // No estaba cargado: hay que cargarlo. En iOS esto no arranca solo,
+    // el documento nace después del gesto; queda listo para el botón ▶.
     if (W[active].w) W[active].w.pause();
     active = other;
     loadInto(active, url);
@@ -957,13 +957,7 @@ function renderQueue(){
       '</div>').join('');
 }
 
-// Precarga del siguiente track en el 2º iframe. Da arranque sin tap en iOS,
-// pero hace que dos widgets descarguen audio a la vez, lo que puede saturar
-// el WiFi de CarPlay inalámbrico y distorsionar. Poné false para probar.
-const PRELOAD_NEXT = true;  // v27: siempre activa
-
 function preloadNext(){
-  if (!PRELOAD_NEXT) return;
   const next = peekNext();
   if (next) loadInto(otherIdx(), next.u);
 }
@@ -1213,6 +1207,7 @@ document.getElementById('plPrev').addEventListener('click', () => { playPrev(); 
 
 // Expandir tocando cualquier parte de la mini barra, salvo play y siguiente
 // --- Barra de progreso seekable ---
+let seeking = false;
 (function initSeekbar(){
   const track = document.getElementById('plTrack');
   const fill = document.getElementById('plTrackFill');
@@ -1331,12 +1326,6 @@ function populateAccountsDropdown(){
 // ============================================================
 // INIT
 // ============================================================
-// Captura de errores visible (útil para diagnosticar en el iPhone sin consola)
-window.addEventListener('error', e => {
-  const bar = document.getElementById('sync');
-  if (bar) { bar.className = 'stats-sync err'; bar.textContent = ' · JS: ' + (e.message || 'error'); }
-});
-
 document.getElementById('appVersion').textContent = APP_VERSION;
 
 if (DEV_MODE) {
