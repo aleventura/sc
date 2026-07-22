@@ -175,8 +175,8 @@
     transform:translateY(100%);transition:transform .3s ease;z-index:40}
   .player.open .pl-full{transform:translateY(0)}
   .pl-full-head{display:flex;justify-content:center;padding:8px 0}
-  .pl-collapse{background:none;border:0;color:var(--fg);font-size:32px;
-    cursor:pointer;padding:4px 40px;line-height:1}
+  .pl-collapse{background:none;border:0;color:var(--dim);font-size:22px;
+    cursor:pointer;padding:4px 20px;line-height:1}
 
   /* Cola dentro del panel expandido */
   .pl-queue{flex:1 1 auto;overflow-y:auto;margin-bottom:10px;min-height:0}
@@ -206,27 +206,13 @@
   .pl-full-body{flex:1 1 auto;display:flex;flex-direction:column;justify-content:flex-end;gap:12px}
   .pl-full-title{font-size:20px;font-weight:700;line-height:1.25}
   .pl-full-who{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:13px}
-  .pl-seekbar{display:flex;align-items:center;gap:10px}
-  .pl-time{flex:0 0 auto;font-size:11px;color:var(--dim);
-    font-variant-numeric:tabular-nums;min-width:34px}
-  .pl-time:last-child{text-align:right}
-  .pl-track{flex:1 1 auto;height:4px;background:var(--border);border-radius:2px;
-    position:relative;cursor:pointer;touch-action:none}
-  .pl-track-fill{height:100%;width:0;background:var(--acc);border-radius:2px;position:relative}
-  .pl-knob{position:absolute;right:-6px;top:50%;transform:translateY(-50%);
-    width:12px;height:12px;border-radius:50%;background:#fff;
-    box-shadow:0 1px 3px rgba(0,0,0,.5);opacity:0;transition:opacity .15s ease}
-  .pl-track:active .pl-knob,.pl-track:hover .pl-knob{opacity:1}
-  /* Fila de transporte: anterior / play / siguiente, centrados y circulares */
-  .pl-transport{display:flex;align-items:center;justify-content:center;gap:24px;padding:4px 0}
-  .pl-tbtn{background:none;border:0;color:var(--fg);cursor:pointer;
-    display:flex;align-items:center;justify-content:center;transition:transform .1s ease}
-  .pl-tbtn:active{transform:scale(.9)}
-  .pl-tbtn.side{font-size:26px;color:var(--dim)}
-  .pl-tbtn.main{width:64px;height:64px;border-radius:50%;background:var(--acc);
-    color:#fff;font-size:24px}
+  .pl-times{display:flex;justify-content:space-between;font-size:11px;
+    color:var(--dim);font-variant-numeric:tabular-nums}
   .pl-row{display:flex;gap:6px}
   .pl-row .btn{flex:1 1 0;min-width:0;padding:12px 4px}
+  .pl-row .btn.nav{flex:0 0 56px;font-size:16px}
+  .pl-row .btn.pl-play{background:var(--acc);border-color:var(--acc);color:#fff;
+    font-size:18px;font-weight:700;padding:14px 6px}
   .pl-row .btn.mark{padding:14px 4px;font-size:15px}
   .pl-row .btn.seek{padding:12px 4px;font-size:13px}
 
@@ -259,9 +245,7 @@
   .card-body{flex:1 1 auto;min-width:0}
   .card-q{flex:0 0 auto;width:34px;height:34px;border-radius:8px;
     background:var(--btn);border:1px solid var(--border);color:var(--fg);
-    font-size:16px;font-weight:700;cursor:pointer;margin-top:2px;
-    transition:background .2s ease,color .2s ease,border-color .2s ease}
-  .card-q.queued{background:var(--ok);border-color:var(--ok);color:#0e0e10}
+    font-size:16px;font-weight:700;cursor:pointer;margin-top:2px}
   .card-q:active{background:var(--btn-hover)}
   /* Salida al marcar: colapsa altura + fade, los de abajo suben suave */
   .card.leaving{
@@ -336,15 +320,11 @@
     <div class="pl-full-body">
       <div class="pl-full-title" id="plFullTitle"></div>
       <div class="pl-full-who" id="plFullWho"></div>
-      <div class="pl-seekbar">
-        <span class="pl-time" id="plCur">0:00</span>
-        <div class="pl-track" id="plTrack"><div class="pl-track-fill" id="plTrackFill"><span class="pl-knob"></span></div></div>
-        <span class="pl-time" id="plDur">0:00</span>
-      </div>
-      <div class="pl-transport">
-        <button class="pl-tbtn side" id="plPrev" aria-label="Anterior">⏮</button>
-        <button class="pl-tbtn main" id="plPlayFull" aria-label="Reproducir">▶</button>
-        <button class="pl-tbtn side" id="plNext" aria-label="Siguiente">⏭</button>
+      <div class="pl-times"><span id="plCur">0:00</span><span id="plDur">0:00</span></div>
+      <div class="pl-row">
+        <button class="btn nav" id="plPrev" aria-label="Anterior">⏮</button>
+        <button class="btn pl-play" id="plPlayFull" aria-label="Reproducir">▶</button>
+        <button class="btn nav" id="plNext" aria-label="Siguiente">⏭</button>
       </div>
       <div class="pl-row">
         <button class="btn seek" data-seek-by="15">+15</button>
@@ -379,7 +359,7 @@ const LS_QUEUE = 'sc_queue_v1';
 // Modo producción: carga tracks.json real y sincroniza con Google Sheet.
 // Versión del build. Subila cada vez que publiques para confirmar que
 // GitHub Pages ya sirve la última (se muestra arriba a la derecha).
-const APP_VERSION = 'v37';
+const APP_VERSION = 'v27';
 const DEV_MODE = false;
 const DEV_TRACKS = [
   {id:"davo--track1",u:"https://soundcloud.com/maccabihouse/daft-punk-hbfs-rafael-maccabi-edit",t:"Daft Punk - HBFS (Rafael Maccabi Edit)",a:"Maccabi House",d:"2026-06-15",r:3421,c:187,l:12450,g:"Indie Dance",dur:6.4,dl:"hypeddit",dlu:"https://hypeddit.com/example",cta:"davo",tipo:"REP",added:"2026-07-12"},
@@ -566,14 +546,15 @@ function render(){
       el.addEventListener('click', () => playTrack(el.dataset.play));
     });
     list.querySelectorAll('[data-queue]').forEach(el => {
-      setQueueBtn(el, queue.includes(el.dataset.queue));
+      // ✓ permanente mientras el track siga en la cola
+      if (queue.includes(el.dataset.queue)) el.textContent = '✓';
       el.addEventListener('click', () => {
         if (queue.includes(el.dataset.queue)) {
           queueRemove(el.dataset.queue);
-          setQueueBtn(el, false);
+          el.textContent = '＋';
         } else {
           queueFirst(el.dataset.queue);
-          setQueueBtn(el, true);
+          el.textContent = '✓';
         }
       });
     });
@@ -646,11 +627,11 @@ function render(){
   document.getElementById('stats').innerHTML =
     '<span class="stats-main">' + fmt(filtered.length) + ' <span class="stats-slash">/</span> ' + fmt(total) + '<span id="sync" class="stats-sync"></span></span>' +
     '<span class="stats-pills">' +
-      '<span class="stat-pill s-new">✨ ' + fmt(nvos) + '</span>' +
       '<span class="stat-pill s-g2">❤❤ ' + fmt(g2s) + '</span>' +
       '<span class="stat-pill s-g">❤ ' + fmt(gs) + '</span>' +
       '<span class="stat-pill s-dl">⬇ ' + fmt(dls) + '</span>' +
       '<span class="stat-pill s-x">✕ ' + fmt(xs) + '</span>' +
+      '<span class="stat-pill s-new">✨ ' + fmt(nvos) + '</span>' +
     '</span>';
   applySync();
 }
@@ -681,12 +662,6 @@ function dlLabel(dl){
     purchase_link: 'comprar', fanlink: 'fanlink', linktree: 'linktree', ninguna: ''
   };
   return labels[dl] !== undefined ? labels[dl] : (dl || 'link');
-}
-
-// Setea el botón de encolar según si el track está en la cola
-function setQueueBtn(el, queued){
-  el.textContent = queued ? '✓' : '＋';
-  el.classList.toggle('queued', queued);
 }
 
 function cardHTML(t){
@@ -779,8 +754,8 @@ const WIDGET_OPTS = {
 // Así el documento del próximo track ya existe cuando tocás ⏭, que es la
 // condición que iOS exige para dejar reproducir desde un gesto del usuario.
 const W = [
-  {id: 'scw0', w: null, url: null, ready: false, dur: 0, playOnReady: false},
-  {id: 'scw1', w: null, url: null, ready: false, dur: 0, playOnReady: false}
+  {id: 'scw0', w: null, url: null, ready: false, dur: 0},
+  {id: 'scw1', w: null, url: null, ready: false, dur: 0}
 ];
 let active = 0;
 
@@ -842,16 +817,8 @@ function loadInto(i, url){
   slot.ready = false;
   slot.dur = 0;
   slot.w.load(url, Object.assign({}, WIDGET_OPTS, {
-    callback: () => {
-      bindSlot(i);
-      slot.ready = true;
-      slot.w.getDuration(d => { slot.dur = d || 0; if (i === active) renderTimes(0); });
-      // Si pidieron reproducir mientras aún cargaba, hacerlo ahora
-      if (slot.playOnReady) {
-        slot.playOnReady = false;
-        if (i === active) slot.w.play();
-      }
-    }
+    callback: () => { bindSlot(i); slot.ready = true;
+      slot.w.getDuration(d => { slot.dur = d || 0; }); }
   }));
 }
 
@@ -872,18 +839,17 @@ function playTrack(url){
     // Ya está en el slot activo: solo reproducir (gesto directo, funciona en iOS)
     W[active].w.play();
   } else if (W[other].url === url) {
-    // El otro slot tiene este track. Puede estar listo o todavía cargando:
-    // si aún carga, marcarlo para que arranque al terminar (si no, el play se pierde).
+    // Estaba precargado: cambiar de slot y reproducir. Este es el camino rápido.
     if (W[active].w) W[active].w.pause();
     active = other;
-    if (W[active].ready) W[active].w.play();
-    else W[active].playOnReady = true;
+    W[active].w.play();
   } else {
-    // No estaba cargado: cargar y reproducir al terminar la carga
+    // No estaba cargado: hay que cargarlo. En iOS esto no arranca solo,
+    // el documento nace después del gesto; queda listo para el botón ▶.
     if (W[active].w) W[active].w.pause();
     active = other;
-    W[active].playOnReady = true;
     loadInto(active, url);
+    setTimeout(() => { if (W[active].url === url && W[active].w) W[active].w.play(); }, 400);
   }
 
   currentPlayingUrl = url;
@@ -940,7 +906,7 @@ function peekNext(){
 function renderQueue(){
   // Mantener sincronizados los botones ＋/✓ de las cards visibles
   document.querySelectorAll('.card [data-queue]').forEach(el => {
-    setQueueBtn(el, queue.includes(el.dataset.queue));
+    el.textContent = queue.includes(el.dataset.queue) ? '✓' : '＋';
   });
   const box = document.getElementById('plQueue');
   if (!box) return;
@@ -958,10 +924,7 @@ function renderQueue(){
     items.map(t =>
       '<div class="q-item"><div class="q-info" data-qplay="' + esc(t.id) + '">' +
         '<div class="q-t">' + esc(t.t) + '</div>' +
-        '<div class="q-a">' + esc(t.a) +
-          [t.g && t.g !== '-' ? esc(t.g) : '', t.dur ? t.dur + 'min' : '']
-            .filter(Boolean).map(x => ' · ' + x).join('') +
-        '</div></div>' +
+        '<div class="q-a">' + esc(t.a) + '</div></div>' +
         '<button class="q-x" data-qdel="' + esc(t.id) + '" aria-label="Quitar">✕</button>' +
       '</div>').join('');
 }
@@ -1012,9 +975,7 @@ function renderTimes(pos){
   const dur = W[active].dur || 0;
   document.getElementById('plCur').textContent = mmss(pos);
   document.getElementById('plDur').textContent = mmss(dur);
-  if (seeking) return; // no pisar la barra mientras el usuario la arrastra
   const pct = dur ? Math.min(100, (pos / dur) * 100) : 0;
-  document.getElementById('plTrackFill').style.width = pct + '%';
   document.getElementById('plFill').style.width = pct + '%';
 }
 
@@ -1215,43 +1176,6 @@ document.getElementById('plNext').addEventListener('click', () => { playNext(); 
 document.getElementById('plPrev').addEventListener('click', () => { playPrev(); scrollToPlaying(); });
 
 // Expandir tocando cualquier parte de la mini barra, salvo play y siguiente
-// --- Barra de progreso seekable ---
-let seeking = false;
-(function initSeekbar(){
-  const track = document.getElementById('plTrack');
-  const fill = document.getElementById('plTrackFill');
-  if (!track) return;
-
-  function pctFromEvent(e){
-    const rect = track.getBoundingClientRect();
-    const x = (e.touches ? e.touches[0].clientX : e.clientX) - rect.left;
-    return Math.max(0, Math.min(1, x / rect.width));
-  }
-  function preview(e){
-    const p = pctFromEvent(e);
-    fill.style.width = (p * 100) + '%';
-    const dur = W[active].dur || 0;
-    document.getElementById('plCur').textContent = mmss(p * dur);
-  }
-  function commit(e){
-    const p = pctFromEvent(e);
-    const dur = W[active].dur || 0;
-    const w = currentWidget();
-    if (w && dur) { w.seekTo(p * dur); w.play(); }
-    seeking = false;
-  }
-
-  track.addEventListener('touchstart', e => { seeking = true; preview(e); }, {passive: true});
-  track.addEventListener('touchmove', e => { if (seeking) preview(e); }, {passive: true});
-  track.addEventListener('touchend', e => { if (seeking) commit(e.changedTouches ? {clientX: e.changedTouches[0].clientX} : e); });
-  track.addEventListener('mousedown', e => { seeking = true; preview(e);
-    const move = ev => preview(ev);
-    const up = ev => { commit(ev); document.removeEventListener('mousemove', move); document.removeEventListener('mouseup', up); };
-    document.addEventListener('mousemove', move);
-    document.addEventListener('mouseup', up);
-  });
-})();
-
 document.getElementById('plMini').addEventListener('click', e => {
   if (e.target.closest('#plPlayMini') || e.target.closest('#plNextMini')) return;
   document.getElementById('player').classList.add('open');
@@ -1278,12 +1202,7 @@ document.getElementById('plMarks').addEventListener('click', e => {
   const btn = e.target.closest('[data-mark]');
   if (!btn) return;
   const [id, s] = btn.dataset.mark.split('|');
-  const t = TRACKS.find(x => x.id === id);
-  const isCurrent = t && t.u === currentPlayingUrl;
-  // Descartar o marcar como descargado el track actual: avanzar al siguiente
-  const advances = isCurrent && (s === 'x' || s === 'dl') && getState(id) !== s;
   setState(id, s);
-  if (advances) { playNext(); scrollToPlaying(); }
 });
 
 document.getElementById('sortFilters').addEventListener('click', e => {
