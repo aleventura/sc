@@ -388,7 +388,7 @@ const LS_QUEUE = 'sc_queue_v1';
 // Modo producción: carga tracks.json real y sincroniza con Google Sheet.
 // Versión del build. Subila cada vez que publiques para confirmar que
 // GitHub Pages ya sirve la última (se muestra arriba a la derecha).
-const APP_VERSION = 'v41';
+const APP_VERSION = 'v42';
 const DEV_MODE = false;
 const DEV_TRACKS = [
   {id:"davo--track1",u:"https://soundcloud.com/maccabihouse/daft-punk-hbfs-rafael-maccabi-edit",t:"Daft Punk - HBFS (Rafael Maccabi Edit)",a:"Maccabi House",d:"2026-06-15",r:3421,c:187,l:12450,g:"Indie Dance",dur:6.4,dl:"hypeddit",dlu:"https://hypeddit.com/example",cta:"davo",tipo:"REP",added:"2026-07-12"},
@@ -789,8 +789,8 @@ const WIDGET_OPTS = {
 // Así el documento del próximo track ya existe cuando tocás ⏭, que es la
 // condición que iOS exige para dejar reproducir desde un gesto del usuario.
 const W = [
-  {id: 'scw0', w: null, url: null, ready: false, dur: 0},
-  {id: 'scw1', w: null, url: null, ready: false, dur: 0}
+  {id: 'scw0', w: null, url: null, ready: false, dur: 0, playOnReady: false},
+  {id: 'scw1', w: null, url: null, ready: false, dur: 0, playOnReady: false}
 ];
 let active = 0;
 
@@ -852,8 +852,16 @@ function loadInto(i, url){
   slot.ready = false;
   slot.dur = 0;
   slot.w.load(url, Object.assign({}, WIDGET_OPTS, {
-    callback: () => { bindSlot(i); slot.ready = true;
-      slot.w.getDuration(d => { slot.dur = d || 0; }); }
+    callback: () => {
+      bindSlot(i);
+      slot.ready = true;
+      slot.w.getDuration(d => { slot.dur = d || 0; });
+      // Si pidieron reproducir mientras todavía cargaba, hacerlo ahora
+      if (slot.playOnReady) {
+        slot.playOnReady = false;
+        if (i === active) slot.w.play();
+      }
+    }
   }));
 }
 
@@ -868,17 +876,19 @@ function playTrack(url){
     // Ya está en el slot activo: solo reproducir (gesto directo, funciona en iOS)
     W[active].w.play();
   } else if (W[other].url === url) {
-    // Estaba precargado: cambiar de slot y reproducir. Este es el camino rápido.
+    // El otro slot tiene este track: puede estar listo o todavía cargando.
+    // Si aún carga, marcarlo para que arranque al terminar (si no, el play se pierde).
     if (W[active].w) W[active].w.pause();
     active = other;
-    W[active].w.play();
+    if (W[active].ready) W[active].w.play();
+    else W[active].playOnReady = true;
   } else {
     // No estaba cargado: hay que cargarlo. En iOS esto no arranca solo,
     // el documento nace después del gesto; queda listo para el botón ▶.
     if (W[active].w) W[active].w.pause();
     active = other;
+    W[active].playOnReady = true;
     loadInto(active, url);
-    setTimeout(() => { if (W[active].url === url && W[active].w) W[active].w.play(); }, 400);
   }
 
   currentPlayingUrl = url;
@@ -1346,7 +1356,7 @@ setInterval(() => {
   const cur = (currentPlayingUrl || '').split('/').pop().slice(0, 18);
   el.textContent = W.map((s, i) =>
     (i === active ? '▶' : ' ') + i +
-    ' rdy:' + (s.ready ? 1 : 0) +
+    ' rdy:' + (s.ready ? 1 : 0) + ' por:' + (s.playOnReady ? 1 : 0) +
     ' ' + (s.url || '-').split('/').pop().slice(0, 18)
   ).join('\n') + '\nactual: ' + cur;
 }, 1000);
