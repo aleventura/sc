@@ -379,7 +379,7 @@ const LS_QUEUE = 'sc_queue_v1';
 // Modo producción: carga tracks.json real y sincroniza con Google Sheet.
 // Versión del build. Subila cada vez que publiques para confirmar que
 // GitHub Pages ya sirve la última (se muestra arriba a la derecha).
-const APP_VERSION = 'v34';
+const APP_VERSION = 'v35-rollback';
 const DEV_MODE = false;
 const DEV_TRACKS = [
   {id:"davo--track1",u:"https://soundcloud.com/maccabihouse/daft-punk-hbfs-rafael-maccabi-edit",t:"Daft Punk - HBFS (Rafael Maccabi Edit)",a:"Maccabi House",d:"2026-06-15",r:3421,c:187,l:12450,g:"Indie Dance",dur:6.4,dl:"hypeddit",dlu:"https://hypeddit.com/example",cta:"davo",tipo:"REP",added:"2026-07-12"},
@@ -780,8 +780,8 @@ const WIDGET_OPTS = {
 // Así el documento del próximo track ya existe cuando tocás ⏭, que es la
 // condición que iOS exige para dejar reproducir desde un gesto del usuario.
 const W = [
-  {id: 'scw0', w: null, url: null, ready: false, dur: 0, bound: false, playOnReady: false},
-  {id: 'scw1', w: null, url: null, ready: false, dur: 0, bound: false, playOnReady: false}
+  {id: 'scw0', w: null, url: null, ready: false, dur: 0},
+  {id: 'scw1', w: null, url: null, ready: false, dur: 0}
 ];
 let active = 0;
 
@@ -808,20 +808,14 @@ function widgetSrc(url){
     '&show_user=false&hide_related=true&show_teaser=false';
 }
 
-// Engancha los eventos de un slot UNA sola vez. Los binds sobreviven a load().
+// Engancha los eventos de un slot (comportamiento v27).
 function bindSlot(i){
   const slot = W[i];
-  if (!slot.w || slot.bound) return;
-  slot.bound = true;
+  if (!slot.w) return;
   const E = window.SC.Widget.Events;
   slot.w.bind(E.READY, () => {
     slot.ready = true;
     slot.w.getDuration(d => { slot.dur = d || 0; if (i === active) renderTimes(0); });
-    // Si se cargó para reproducir de inmediato (⏭ o cambio de track), hacerlo ahora
-    if (slot.playOnReady) {
-      slot.playOnReady = false;
-      if (i === active) slot.w.play();
-    }
   });
   slot.w.bind(E.PLAY, () => {
     if (i !== active) { slot.w.pause(); return; }   // el precargado no debe sonar
@@ -841,27 +835,17 @@ function bindSlot(i){
   });
 }
 
-// Carga una URL en un slot y reproduce cuando queda lista.
-// Usa un flag playOnReady + el evento READY, más confiable que el callback de load().
-function loadAndPlay(i, url){
-  const slot = W[i];
-  if (!slot.w || !url) return;
-  slot.url = url;
-  slot.ready = false;
-  slot.dur = 0;
-  slot.playOnReady = true;
-  slot.w.load(url, WIDGET_OPTS);
-}
-
-// Carga una URL en un slot (sin reproducir). Devuelve enseguida.
+// Carga una URL en un slot (sin reproducir). Comportamiento v27.
 function loadInto(i, url){
   const slot = W[i];
   if (!slot.w || !url || slot.url === url) return;
   slot.url = url;
   slot.ready = false;
   slot.dur = 0;
-  slot.playOnReady = false;
-  slot.w.load(url, WIDGET_OPTS);
+  slot.w.load(url, Object.assign({}, WIDGET_OPTS, {
+    callback: () => { bindSlot(i); slot.ready = true;
+      slot.w.getDuration(d => { slot.dur = d || 0; }); }
+  }));
 }
 
 function currentWidget(){ return W[active].w; }
@@ -886,16 +870,14 @@ function playTrack(url){
     active = other;
     W[active].w.play();
   } else {
-    // No estaba precargado: cargar y reproducir cuando el load confirme.
-    // Disparar en el callback (no a tiempo fijo) evita que quede en 0:00
-    // si el documento tarda más de lo previsto.
+    // No estaba cargado: cargar y reproducir tras un margen (comportamiento v27)
     if (W[active].w) W[active].w.pause();
     active = other;
-    loadAndPlay(active, url);
+    loadInto(active, url);
+    setTimeout(() => { if (W[active].url === url && W[active].w) W[active].w.play(); }, 400);
   }
 
   currentPlayingUrl = url;
-  playerState = 'playing'; // optimista: si iOS no arranca, el evento PAUSE lo corrige
   setMediaSession(url);
   updatePlayerUI();
   highlightPlayingCard();
@@ -978,7 +960,7 @@ function renderQueue(){
 // Precarga del siguiente track en el 2º iframe. Da arranque sin tap en iOS,
 // pero hace que dos widgets descarguen audio a la vez, lo que puede saturar
 // el WiFi de CarPlay inalámbrico y distorsionar. Poné false para probar.
-const PRELOAD_NEXT = true;
+const PRELOAD_NEXT = true;  // v27: siempre activa
 
 function preloadNext(){
   if (!PRELOAD_NEXT) return;
