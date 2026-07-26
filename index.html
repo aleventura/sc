@@ -169,8 +169,8 @@
     transform:translateY(100%);transition:transform .3s ease;z-index:40}
   .player.open .pl-full{transform:translateY(0)}
   .pl-full-head{display:flex;justify-content:center;padding:8px 0}
-  .pl-collapse{background:none;border:0;color:var(--dim);font-size:22px;
-    cursor:pointer;padding:4px 20px;line-height:1}
+  .pl-collapse{background:none;border:0;color:var(--fg);font-size:32px;
+    cursor:pointer;padding:4px 40px;line-height:1}
 
   /* Cola dentro del panel expandido */
   .pl-queue{flex:1 1 auto;overflow-y:auto;margin-bottom:10px;min-height:0}
@@ -229,6 +229,21 @@
   .card:nth-child(-n+40){animation:fade-in .2s ease-out both}
   .card{transition:border-color .2s ease}
   .card.playing{border-color:var(--acc)}
+  /* Card con ícono de play a la izquierda */
+  .card-main{display:flex;align-items:flex-start;gap:10px}
+  .card-play{flex:0 0 auto;width:38px;height:38px;border-radius:50%;
+    background:var(--btn);border:1px solid var(--border);color:var(--fg);
+    font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;
+    margin-top:2px;transition:background .2s ease,transform .1s ease}
+  .card-play:active{transform:scale(.94)}
+  .card-play.on{background:var(--acc);border-color:var(--acc);color:#fff}
+  .card-body{flex:1 1 auto;min-width:0}
+  .card-q{flex:0 0 auto;width:34px;height:34px;border-radius:8px;
+    background:var(--btn);border:1px solid var(--border);color:var(--fg);
+    font-size:16px;font-weight:700;cursor:pointer;margin-top:2px;
+    transition:background .2s ease,color .2s ease,border-color .2s ease}
+  .card-q.queued{background:var(--ok);border-color:var(--ok);color:#0e0e10}
+  .card-q:active{background:var(--btn-hover)}
   /* Salida al marcar: colapsa altura + fade, los de abajo suben suave */
   .card.leaving{
     animation:none;
@@ -341,7 +356,7 @@ const LS_QUEUE = 'sc_queue_v1';
 // Modo producción: carga tracks.json real y sincroniza con Google Sheet.
 // Versión del build. Subila cada vez que publiques para confirmar que
 // GitHub Pages ya sirve la última (se muestra arriba a la derecha).
-const APP_VERSION = 'v24-b';
+const APP_VERSION = 'v24-c';
 const DEV_MODE = false;
 const DEV_TRACKS = [
   {id:"davo--track1",u:"https://soundcloud.com/maccabihouse/daft-punk-hbfs-rafael-maccabi-edit",t:"Daft Punk - HBFS (Rafael Maccabi Edit)",a:"Maccabi House",d:"2026-06-15",r:3421,c:187,l:12450,g:"Indie Dance",dur:6.4,dl:"hypeddit",dlu:"https://hypeddit.com/example",cta:"davo",tipo:"REP",added:"2026-07-12"},
@@ -700,23 +715,26 @@ function cardHTML(t){
   }
 
   const isCurrent = t.u === currentPlayingUrl;
+  const playing = isCurrent && playerState === 'playing';
 
   return `
     <div class="card ${isCurrent ? 'playing' : ''}" data-track-id="${esc(t.id)}">
-      <div class="title">${esc(t.t)}</div>
-      ${whoHTML}
-      <div class="meta">
-        <span>${esc(t.d)}</span>
-        ${t.added ? '<span title="Agregado al catálogo">+ ' + esc(t.added) + '</span>' : ''}
-        <span>♻ ${fmt(t.r)}</span>
-        <span>💬 ${fmt(t.c)}</span>
-        ${t.dur ? '<span>' + t.dur + 'min</span>' : ''}
-        ${t.g && t.g !== '-' ? '<span>' + esc(t.g) + '</span>' : ''}
-      </div>
-      ${stateBadge ? '<div class="badges">' + stateBadge + '</div>' : ''}
-      <div class="actions">
-        <button class="btn play" data-play="${esc(t.u)}">${isCurrent ? '♪ Sonando' : '▶ Play'}</button>
-        <button class="btn queue" data-queue="${esc(t.id)}" title="Poner a continuación">＋</button>
+      <div class="card-main">
+        <button class="card-play ${isCurrent ? 'on' : ''}" data-play="${esc(t.u)}" aria-label="Reproducir">${playing ? '⏸' : '▶'}</button>
+        <div class="card-body">
+          <div class="title">${esc(t.t)}</div>
+          ${whoHTML}
+          <div class="meta">
+            <span>${esc(t.d)}</span>
+            ${t.added ? '<span title="Agregado al catálogo">+ ' + esc(t.added) + '</span>' : ''}
+            <span>♻ ${fmt(t.r)}</span>
+            <span>💬 ${fmt(t.c)}</span>
+            ${t.dur ? '<span>' + t.dur + 'min</span>' : ''}
+            ${t.g && t.g !== '-' ? '<span>' + esc(t.g) + '</span>' : ''}
+          </div>
+          ${stateBadge ? '<div class="badges">' + stateBadge + '</div>' : ''}
+        </div>
+        <button class="card-q" data-queue="${esc(t.id)}" title="Poner a continuación">＋</button>
       </div>
     </div>
   `;
@@ -902,7 +920,10 @@ function renderQueue(){
     items.map(t =>
       '<div class="q-item"><div class="q-info" data-qplay="' + esc(t.id) + '">' +
         '<div class="q-t">' + esc(t.t) + '</div>' +
-        '<div class="q-a">' + esc(t.a) + '</div></div>' +
+        '<div class="q-a">' + esc(t.a) +
+          [t.g && t.g !== '-' ? esc(t.g) : '', t.dur ? t.dur + 'min' : '']
+            .filter(Boolean).map(x => ' · ' + x).join('') +
+        '</div></div>' +
         '<button class="q-x" data-qdel="' + esc(t.id) + '" aria-label="Quitar">✕</button>' +
       '</div>').join('');
 }
@@ -961,6 +982,8 @@ function updatePlayButtons(){
   const icon = playerState === 'playing' ? '⏸' : '▶';
   document.getElementById('plPlayMini').textContent = icon;
   document.getElementById('plPlayFull').textContent = icon;
+  const card = document.querySelector('.card.playing .card-play');
+  if (card) card.textContent = icon;
 }
 
 // Rellena mini barra y panel expandido con el track actual
@@ -1010,16 +1033,16 @@ function syncPlayerHeight(){
 function highlightPlayingCard(){
   document.querySelectorAll('.card.playing').forEach(c => {
     c.classList.remove('playing');
-    const b = c.querySelector('.btn.play');
-    if (b) b.textContent = '▶ Play';
+    const b = c.querySelector('.card-play');
+    if (b) { b.classList.remove('on'); b.textContent = '▶'; }
   });
   const t = TRACKS.find(x => x.u === currentPlayingUrl);
   if (!t) return;
   const card = document.querySelector('.card[data-track-id="' + cssEscape(t.id) + '"]');
   if (!card) return;
   card.classList.add('playing');
-  const b = card.querySelector('.btn.play');
-  if (b) b.textContent = '♪ Sonando';
+  const b = card.querySelector('.card-play');
+  if (b) { b.classList.add('on'); b.textContent = playerState === 'playing' ? '⏸' : '▶'; }
 }
 
 // Lleva la lista hasta la card que se está reproduciendo
@@ -1177,7 +1200,12 @@ document.getElementById('plMarks').addEventListener('click', e => {
   const btn = e.target.closest('[data-mark]');
   if (!btn) return;
   const [id, s] = btn.dataset.mark.split('|');
+  const t = TRACKS.find(x => x.id === id);
+  const isCurrent = t && t.u === currentPlayingUrl;
+  // Descartar o marcar como descargado el track actual: avanzar al siguiente
+  const advances = isCurrent && (s === 'x' || s === 'dl') && getState(id) !== s;
   setState(id, s);
+  if (advances) { playNext(); scrollToPlaying(); }
 });
 
 document.getElementById('sortFilters').addEventListener('click', e => {
