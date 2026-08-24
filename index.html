@@ -164,7 +164,7 @@
   .btn.play{background:var(--acc);border-color:var(--acc);color:var(--on-acc)}
   .btn.play.playing{flex:0 0 auto;padding:8px 14px;background:var(--btn);border-color:var(--acc);color:var(--acc);font-size:16px}
   .btn.next{flex:0 0 auto;padding:8px 14px;background:var(--acc);border-color:var(--acc);color:var(--on-acc);font-weight:700}
-  .btn.seek{flex:1;padding:12px 8px;background:var(--btn);border-color:var(--acc);color:var(--acc);font-weight:700;font-size:14px}
+  .btn.seek{flex:1;padding:20px 8px;background:var(--btn);border-color:var(--acc);color:var(--acc);font-weight:700;font-size:19px}
   .btn.mark{padding:18px 6px;font-size:16px;transition:background .2s ease,border-color .2s ease,color .2s ease,transform .1s ease}
   .btn.mark:active{transform:scale(.96)}
   .btn.g.on{background:var(--ok);border-color:var(--ok);color:var(--on-ok)}
@@ -269,7 +269,7 @@
   .pl-row .btn.nav{flex:0 0 64px;font-size:16px}
   .pl-row .btn.pl-play{background:var(--acc);border-color:var(--acc);color:var(--on-acc);
     font-size:18px;font-weight:700;padding:14px 6px}
-  .pl-row .btn.mark{padding:14px 6px;font-size:16px}
+  .pl-row .btn.mark{padding:22px 6px;font-size:22px}
 
   /* Los iframes de SoundCloud quedan ocultos pero presentes:
      display:none haría que iOS suspenda el audio. */
@@ -392,7 +392,6 @@
       <div class="pl-row">
         <button class="btn seek" data-seek-by="15">+15</button>
         <button class="btn seek" data-seek-by="30">+30</button>
-        <button class="btn seek" data-seek-by="60">+60</button>
       </div>
       <div class="pl-row" id="plMarks"></div>
     </div>
@@ -422,7 +421,7 @@ const LS_QUEUE = 'sc_queue_v1';
 // Modo producción: carga tracks.json real y sincroniza con Google Sheet.
 // Versión del build. Subila cada vez que publiques para confirmar que
 // GitHub Pages ya sirve la última (se muestra arriba a la derecha).
-const APP_VERSION = 'v24-g';
+const APP_VERSION = 'v24-h';
 const DEV_MODE = false;
 const DEV_TRACKS = [
   {id:"davo--track1",u:"https://soundcloud.com/maccabihouse/daft-punk-hbfs-rafael-maccabi-edit",t:"Daft Punk - HBFS (Rafael Maccabi Edit)",a:"Maccabi House",d:"2026-06-15",r:3421,c:187,l:12450,g:"Indie Dance",dur:6.4,dl:"hypeddit",dlu:"https://hypeddit.com/example",cta:"davo",tipo:"REP",added:"2026-07-12"},
