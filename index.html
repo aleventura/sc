@@ -173,20 +173,30 @@
     cursor:pointer;padding:4px 40px;line-height:1}
 
   /* Cola dentro del panel expandido */
-  .pl-queue{flex:1 1 auto;overflow-y:auto;margin-bottom:10px;min-height:0}
-  .q-empty{color:var(--dim);font-size:12px;padding:12px 2px;line-height:1.5}
+  .pl-queue{flex:1 1 auto;overflow-y:auto;margin-bottom:10px;min-height:0;
+    margin-left:-16px;margin-right:-16px}
+  .q-empty{color:var(--dim);font-size:13px;padding:24px 16px;line-height:1.6;text-align:center}
   .q-head{display:flex;justify-content:space-between;align-items:center;
-    font-size:11px;color:var(--dim);text-transform:uppercase;
-    letter-spacing:.04em;padding:4px 2px 8px;position:sticky;top:0;background:var(--bg)}
-  .q-clear{background:none;border:0;color:var(--no);font-size:11px;
-    cursor:pointer;text-transform:uppercase;letter-spacing:.04em}
-  .q-item{display:flex;align-items:center;gap:8px;padding:8px 2px;
-    border-bottom:1px solid var(--border)}
-  .q-info{flex:1 1 auto;min-width:0;cursor:pointer}
-  .q-t{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .q-a{font-size:11px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    font-size:11px;color:var(--dim);text-transform:uppercase;font-weight:600;
+    letter-spacing:.06em;padding:8px 16px 10px;position:sticky;top:0;background:var(--bg);z-index:1}
+  .q-clear{background:none;border:0;color:var(--dim);font-size:11px;
+    cursor:pointer;text-transform:uppercase;letter-spacing:.06em;font-weight:600}
+  .q-clear:active{color:var(--no)}
+  .q-item{display:flex;align-items:center;gap:12px;padding:10px 16px;
+    transition:background .15s ease}
+  .q-item:active{background:var(--btn)}
+  .q-item.playing{background:rgba(242,111,33,.10)}
+  .q-grip{flex:0 0 auto;color:var(--dim);font-size:15px;cursor:grab;
+    opacity:.5;line-height:1;user-select:none}
+  .q-info{flex:1 1 auto;min-width:0;cursor:pointer;display:flex;flex-direction:column;gap:2px}
+  .q-t{font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+    line-height:1.25}
+  .q-item.playing .q-t{color:var(--acc)}
+  .q-a{font-size:12px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .q-eq{flex:0 0 auto;color:var(--acc);font-size:13px}
   .q-x{flex:0 0 auto;background:none;border:0;color:var(--dim);
-    font-size:13px;cursor:pointer;padding:6px 8px}
+    font-size:15px;cursor:pointer;padding:6px 4px;line-height:1}
+  .q-x:active{color:var(--no)}
 
   /* Contador de cola sobre el botón siguiente */
   .pl-qcount{position:absolute;right:6px;top:2px;background:var(--acc);color:#fff;
@@ -356,7 +366,7 @@ const LS_QUEUE = 'sc_queue_v1';
 // Modo producción: carga tracks.json real y sincroniza con Google Sheet.
 // Versión del build. Subila cada vez que publiques para confirmar que
 // GitHub Pages ya sirve la última (se muestra arriba a la derecha).
-const APP_VERSION = 'v24-c';
+const APP_VERSION = 'v24-d';
 const DEV_MODE = false;
 const DEV_TRACKS = [
   {id:"davo--track1",u:"https://soundcloud.com/maccabihouse/daft-punk-hbfs-rafael-maccabi-edit",t:"Daft Punk - HBFS (Rafael Maccabi Edit)",a:"Maccabi House",d:"2026-06-15",r:3421,c:187,l:12450,g:"Indie Dance",dur:6.4,dl:"hypeddit",dlu:"https://hypeddit.com/example",cta:"davo",tipo:"REP",added:"2026-07-12"},
@@ -915,17 +925,23 @@ function renderQueue(){
     return;
   }
   box.innerHTML =
-    '<div class="q-head"><span>A continuación (' + items.length + ')</span>' +
+    '<div class="q-head"><span>A continuación · ' + items.length + '</span>' +
     '<button class="q-clear" id="qClear">Vaciar</button></div>' +
-    items.map(t =>
-      '<div class="q-item"><div class="q-info" data-qplay="' + esc(t.id) + '">' +
-        '<div class="q-t">' + esc(t.t) + '</div>' +
-        '<div class="q-a">' + esc(t.a) +
-          [t.g && t.g !== '-' ? esc(t.g) : '', t.dur ? t.dur + 'min' : '']
-            .filter(Boolean).map(x => ' · ' + x).join('') +
-        '</div></div>' +
+    items.map(t => {
+      const isCur = t.u === currentPlayingUrl;
+      return '<div class="q-item' + (isCur ? ' playing' : '') + '">' +
+        '<span class="q-grip">≡</span>' +
+        '<div class="q-info" data-qplay="' + esc(t.id) + '">' +
+          '<div class="q-t">' + esc(t.t) + '</div>' +
+          '<div class="q-a">' + esc(t.a) +
+            [t.g && t.g !== '-' ? esc(t.g) : '', t.dur ? t.dur + 'min' : '']
+              .filter(Boolean).map(x => ' · ' + x).join('') +
+          '</div>' +
+        '</div>' +
+        (isCur ? '<span class="q-eq">♪</span>' : '') +
         '<button class="q-x" data-qdel="' + esc(t.id) + '" aria-label="Quitar">✕</button>' +
-      '</div>').join('');
+      '</div>';
+    }).join('');
 }
 
 function preloadNext(){
