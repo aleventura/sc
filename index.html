@@ -156,6 +156,7 @@
   .who .dl-link:active{opacity:.7}
   .badge.tipo-up{background:var(--t-ok);color:var(--ok);border:1px solid var(--ok);font-weight:700;font-size:10px;padding:1px 6px;letter-spacing:.5px}
   .badge.tipo-rep{background:var(--t-acc2);color:var(--acc2);border:1px solid var(--acc2);font-weight:700;font-size:10px;padding:1px 6px;letter-spacing:.5px}
+  .badge.src{background:var(--btn);color:var(--dim);border:1px solid var(--border);font-size:10px;padding:1px 6px;letter-spacing:.3px}
   .actions{display:flex;gap:6px;margin-top:6px;flex-wrap:wrap}
   .row-break{flex-basis:100%;height:0}
   .btn{flex:1;padding:8px 6px;background:var(--btn);border:1px solid var(--border);
@@ -350,6 +351,9 @@
       <button class="chip sec" data-sort="comments">Comments ↓</button>
     </div>
     <div class="search-row">
+      <select class="search-input" id="selectSource">
+        <option value="">📥 Todos los orígenes</option>
+      </select>
       <select class="search-input" id="selectAccount">
         <option value="">👤 Todas las cuentas</option>
       </select>
@@ -421,15 +425,15 @@ const LS_QUEUE = 'sc_queue_v1';
 // Modo producción: carga tracks.json real y sincroniza con Google Sheet.
 // Versión del build. Subila cada vez que publiques para confirmar que
 // GitHub Pages ya sirve la última (se muestra arriba a la derecha).
-const APP_VERSION = 'v24-h';
+const APP_VERSION = 'v24-i';
 const DEV_MODE = false;
 const DEV_TRACKS = [
-  {id:"davo--track1",u:"https://soundcloud.com/maccabihouse/daft-punk-hbfs-rafael-maccabi-edit",t:"Daft Punk - HBFS (Rafael Maccabi Edit)",a:"Maccabi House",d:"2026-06-15",r:3421,c:187,l:12450,g:"Indie Dance",dur:6.4,dl:"hypeddit",dlu:"https://hypeddit.com/example",cta:"davo",tipo:"REP",added:"2026-07-12"},
-  {id:"djchrisstussy--desire",u:"https://soundcloud.com/djchrisstussy/chris-stussy-desire-1",t:"Desire",a:"Chris Stussy",d:"2026-06-10",r:892,c:45,l:3210,g:"Tech House",dur:5.8,dl:"bandcamp",dlu:"https://chrisstussy.bandcamp.com",cta:"djchrisstussy",tipo:"UP",added:"2026-07-12"},
-  {id:"davo--conga",u:"https://soundcloud.com/maccabihouse/gloria-estefan-conga-gabss-maccabi-edit",t:"Gloria Estefan - Conga (Gabss Maccabi Edit)",a:"Maccabi House",d:"2026-06-08",r:5820,c:312,l:18900,g:"House",dur:4.9,dl:"hypeddit",dlu:"https://hypeddit.com/example2",cta:"davo",tipo:"REP",added:"2026-06-01"},
-  {id:"wuki--crystalised",u:"https://soundcloud.com/maccabihouse/the-xx-crystalised-bletter-maccabi-edit",t:"The XX - Crystalised (Bletter Maccabi Edit)",a:"Maccabi House",d:"2026-06-05",r:1234,c:89,l:6500,g:"Indie Dance",dur:5.2,dl:"hypeddit",dlu:"https://hypeddit.com/example3",cta:"wuki",tipo:"REP",added:"2026-06-01"},
-  {id:"raimaldo--nathan",u:"https://soundcloud.com/raimaldo/nathan-dawe-flowers-remix",t:"Flowers (Raimaldo Edit)",a:"Nathan Dawe",d:"2026-05-15",r:216,c:5,l:400,g:"Tech House",dur:6.6,dl:"hypeddit",dlu:"https://hypeddit.com/example4",cta:"Raimaldo",tipo:"UP",added:"2026-07-12"},
-  {id:"adriatique--mystery",u:"https://soundcloud.com/pauldeep/adriatique-mystery",t:"Adriatique - Mystery (Paul Deep Remix)",a:"Paul Deep",d:"2026-06-30",r:53,c:20,l:180,g:"Electronic",dur:8.6,dl:"hypeddit",dlu:"https://hypeddit.com/example5",cta:"Adriatique",tipo:"UP",added:"2026-07-12"}
+  {id:"davo--track1",u:"https://soundcloud.com/maccabihouse/daft-punk-hbfs-rafael-maccabi-edit",t:"Daft Punk - HBFS (Rafael Maccabi Edit)",a:"Maccabi House",d:"2026-06-15",r:3421,c:187,l:12450,g:"Indie Dance",dur:6.4,dl:"hypeddit",dlu:"https://hypeddit.com/example",cta:"davo",tipo:"REP",src:"Mis seguidos",added:"2026-07-12"},
+  {id:"djchrisstussy--desire",u:"https://soundcloud.com/djchrisstussy/chris-stussy-desire-1",t:"Desire",a:"Chris Stussy",d:"2026-06-10",r:892,c:45,l:3210,g:"Tech House",dur:5.8,dl:"bandcamp",dlu:"https://chrisstussy.bandcamp.com",cta:"djchrisstussy",tipo:"UP",src:"Mis seguidos",added:"2026-07-12"},
+  {id:"davo--conga",u:"https://soundcloud.com/maccabihouse/gloria-estefan-conga-gabss-maccabi-edit",t:"Gloria Estefan - Conga (Gabss Maccabi Edit)",a:"Maccabi House",d:"2026-06-08",r:5820,c:312,l:18900,g:"House",dur:4.9,dl:"hypeddit",dlu:"https://hypeddit.com/example2",cta:"davo",tipo:"REP",src:"Mis seguidos",added:"2026-06-01"},
+  {id:"wuki--crystalised",u:"https://soundcloud.com/maccabihouse/the-xx-crystalised-bletter-maccabi-edit",t:"The XX - Crystalised (Bletter Maccabi Edit)",a:"Maccabi House",d:"2026-06-05",r:1234,c:89,l:6500,g:"Indie Dance",dur:5.2,dl:"hypeddit",dlu:"https://hypeddit.com/example3",cta:"wuki",tipo:"REP",src:"Mis seguidos",added:"2026-06-01"},
+  {id:"raimaldo--nathan",u:"https://soundcloud.com/raimaldo/nathan-dawe-flowers-remix",t:"Flowers (Raimaldo Edit)",a:"Nathan Dawe",d:"2026-05-15",r:216,c:5,l:400,g:"Tech House",dur:6.6,dl:"hypeddit",dlu:"https://hypeddit.com/example4",cta:"Raimaldo",tipo:"UP",src:"GALLiVANTER",added:"2026-07-12"},
+  {id:"adriatique--mystery",u:"https://soundcloud.com/pauldeep/adriatique-mystery",t:"Adriatique - Mystery (Paul Deep Remix)",a:"Paul Deep",d:"2026-06-30",r:53,c:20,l:180,g:"Electronic",dur:8.6,dl:"hypeddit",dlu:"https://hypeddit.com/example5",cta:"Adriatique",tipo:"UP",src:"GALLiVANTER",added:"2026-07-12"}
 ];
 
 // ============================================================
@@ -445,6 +449,7 @@ let queue = JSON.parse(localStorage.getItem(LS_QUEUE) || '[]');  // ids de track
 
 let filterState = 'nuevos';
 let filterAccount = null;  // cuenta seleccionada del dropdown o null
+let filterSource = null;   // origen/fuente seleccionado del dropdown o null
 let sortBy = 'fecha';
 let currentPlayingUrl = null;  // track cuyo widget está abierto (o null)
 let filteredTracks = [];       // lista visible actual (para playNext)
@@ -601,6 +606,7 @@ function passesFilter(t){
   // todos: pasa
 
   if (filterAccount && (t.cta || '') !== filterAccount) return false;
+  if (filterSource && (t.src || '') !== filterSource) return false;
   return true;
 }
 
@@ -660,6 +666,15 @@ function render(){
       el.addEventListener('click', () => {
         filterAccount = el.dataset.account;
         document.getElementById('selectAccount').value = filterAccount;
+        populateAccountsDropdown();
+        render();
+      });
+    });
+    list.querySelectorAll('[data-source]').forEach(el => {
+      el.addEventListener('click', () => {
+        filterSource = el.dataset.source;
+        document.getElementById('selectSource').value = filterSource;
+        populateAccountsDropdown();
         render();
       });
     });
@@ -671,9 +686,12 @@ function render(){
   if (filterAccount) {
     chips.push('<span class="active-filter" data-clear="account">Cuenta: ' + esc(filterAccount) + '</span>');
   }
+  if (filterSource) {
+    chips.push('<span class="active-filter" data-clear="source">Origen: ' + esc(filterSource) + '</span>');
+  }
 
   // Botón bulk-descartar: aparece si hay filtro por cuenta activo (para no descartar todos los "Nuevos" por accidente)
-  const hasFilter = filterAccount;
+  const hasFilter = filterAccount || filterSource;
   const notAlreadyDescartados = filterState !== 'descartados'; // no tiene sentido descartar los ya descartados
   if (hasFilter && notAlreadyDescartados && filtered.length > 0) {
     chips.push('<button class="bulk-btn" data-bulk="x">Descartar ' + fmt(filtered.length) + ' visibles</button>');
@@ -687,13 +705,21 @@ function render(){
         filterAccount = null;
         document.getElementById('selectAccount').value = '';
       }
+      if (el.dataset.clear === 'source') {
+        filterSource = null;
+        document.getElementById('selectSource').value = '';
+      }
+      populateAccountsDropdown();
       render();
     });
   });
   af.querySelectorAll('[data-bulk]').forEach(el => {
     el.addEventListener('click', () => {
       const n = filtered.length;
-      const context = filterAccount ? '\n\nFiltro activo:\n  Cuenta: ' + filterAccount : '';
+      const _parts = [];
+      if (filterAccount) _parts.push('  Cuenta: ' + filterAccount);
+      if (filterSource) _parts.push('  Origen: ' + filterSource);
+      const context = _parts.length ? '\n\nFiltro activo:\n' + _parts.join('\n') : '';
       const msg = '¿Descartar ' + fmt(n) + ' tracks?' + context + '\n\nEsta acción se puede revertir uno por uno desde la vista "Descartados".';
       if (!confirm(msg)) return;
       // Todos con la misma marca de tiempo: fueron descartados en un solo acto
@@ -782,6 +808,11 @@ function cardHTML(t){
     : t.tipo === 'REP' ? '<span class="badge tipo-rep">REP</span>'
     : '';
 
+  // Badge de origen/fuente (de qué scan vino el track); clickeable para filtrar
+  const srcBadge = t.src
+    ? '<span class="badge src" data-source="' + esc(t.src) + '" title="Filtrar por origen">📥 ' + esc(t.src) + '</span>'
+    : '';
+
   // Link de descarga: muestra el servicio (hypeddit, bandcamp, etc.) en vez de "link" genérico
   const dlText = dlLabel(t.dl);
   const dlLink = (t.dlu && dlText)
@@ -798,6 +829,7 @@ function cardHTML(t){
         <span class="sep">→</span>
         <span class="name" data-artist-url="${esc(artistUrl)}">${esc(artist)}</span>
         ${dlLink}
+        ${srcBadge}
       </div>`;
   } else if (artist) {
     // "Artista [UP] link" — artista con color verde coordinado al badge UP
@@ -806,6 +838,7 @@ function cardHTML(t){
         <span class="name artist-up" data-artist-url="${esc(artistUrl)}">${esc(artist)}</span>
         ${tipoBadge}
         ${dlLink}
+        ${srcBadge}
       </div>`;
   }
 
@@ -1364,6 +1397,13 @@ function syncSortForView(){
 // Listener del selector de cuenta
 document.getElementById('selectAccount').addEventListener('change', e => {
   filterAccount = e.target.value || null;
+  populateAccountsDropdown();
+  render();
+});
+
+document.getElementById('selectSource').addEventListener('change', e => {
+  filterSource = e.target.value || null;
+  populateAccountsDropdown();
   render();
 });
 
@@ -1379,6 +1419,7 @@ function populateAccountsDropdown(){
         if (filterState === 'g2' && s !== 'g2') return false;
         if (filterState === 'descargados' && s !== 'dl') return false;
         if (filterState === 'descartados' && s !== 'x') return false;
+        if (filterSource && (t.src || '') !== filterSource) return false;
         return true;
       })
       .map(t => t.cta)
@@ -1393,6 +1434,38 @@ function populateAccountsDropdown(){
   // Si la cuenta actualmente filtrada ya no está en la vista, limpiar el filtro
   if (current && !accounts.includes(current)) {
     filterAccount = null;
+    select.value = '';
+  } else {
+    select.value = current;
+  }
+  populateSourceDropdown();
+}
+
+// Puebla el <select> de orígenes con las fuentes presentes en la vista actual (según filterState).
+function populateSourceDropdown(){
+  const sources = [...new Set(
+    TRACKS
+      .filter(t => {
+        const s = getState(t.id);
+        if (filterState === 'nuevos' && s) return false;
+        if (filterState === 'g' && s !== 'g') return false;
+        if (filterState === 'g2' && s !== 'g2') return false;
+        if (filterState === 'descargados' && s !== 'dl') return false;
+        if (filterState === 'descartados' && s !== 'x') return false;
+        if (filterAccount && (t.cta || '') !== filterAccount) return false;
+        return true;
+      })
+      .map(t => t.src)
+      .filter(Boolean)
+  )].sort((a, b) => a.localeCompare(b, 'es'));
+
+  const select = document.getElementById('selectSource');
+  const current = select.value;
+  select.innerHTML = '<option value="">📥 Todos los orígenes (' + sources.length + ')</option>' +
+    sources.map(a => '<option value="' + esc(a) + '">' + esc(a) + '</option>').join('');
+
+  if (current && !sources.includes(current)) {
+    filterSource = null;
     select.value = '';
   } else {
     select.value = current;
