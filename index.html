@@ -356,6 +356,8 @@
   .sv-bar>span{display:block;height:100%}
   .sv-n{font-size:11px;color:var(--dim);margin-top:3px}
   .sv-empty{padding:30px 16px;text-align:center;color:var(--dim);line-height:1.5}
+  .sv-sech{font-size:13px;font-weight:700;color:var(--fg);padding:14px 4px 6px;border-top:1px solid var(--border);margin-top:6px}
+  .sv-list > .sv-sech:first-child{border-top:none;margin-top:0}
 </style>
 </head>
 <body>
@@ -473,7 +475,7 @@ const LS_QUEUE = 'sc_queue_v1';
 // Modo producción: carga tracks.json real y sincroniza con Google Sheet.
 // Versión del build. Subila cada vez que publiques para confirmar que
 // GitHub Pages ya sirve la última (se muestra arriba a la derecha).
-const APP_VERSION = 'v24-j';
+const APP_VERSION = 'v24-k';
 const DEV_MODE = false;
 const DEV_TRACKS = [
   {id:"davo--track1",u:"https://soundcloud.com/maccabihouse/daft-punk-hbfs-rafael-maccabi-edit",t:"Daft Punk - HBFS (Rafael Maccabi Edit)",a:"Maccabi House",d:"2026-06-15",r:3421,c:187,l:12450,g:"Indie Dance",dur:6.4,dl:"hypeddit",dlu:"https://hypeddit.com/example",cta:"davo",tipo:"REP",src:"Mis seguidos",added:"2026-07-12"},
@@ -1539,6 +1541,7 @@ syncSortForView();
 // tasa = (❤❤ + ❤ + ⬇) / (❤❤ + ❤ + ⬇ + ✕)  [solo tracks marcados]
 // ============================================================
 let statsBy = 'cta';
+let FOLLOWING = new Set();   // nombres de cuentas que sigues ahora (viene de payload.following)
 
 function computeStats(by){
   const map = new Map();
@@ -1546,8 +1549,9 @@ function computeStats(by){
     const key = ((by === 'a' ? t.a : t.cta) || '').trim();
     if (!key) return;
     let o = map.get(key);
-    if (!o) { o = { key, g2:0, g:0, dl:0, x:0, total:0 }; map.set(key, o); }
+    if (!o) { o = { key, g2:0, g:0, dl:0, x:0, total:0, hasMis:false }; map.set(key, o); }
     o.total++;
+    if (t.src === 'Mis seguidos') o.hasMis = true;
     const s = getState(t.id);
     if (s === 'g2') o.g2++;
     else if (s === 'g') o.g++;
@@ -1570,6 +1574,29 @@ function rateColor(r){
   return 'var(--no)';
 }
 
+function statRowHTML(o, i){
+  const pct = Math.round(o.rate * 100);
+  const col = rateColor(o.rate);
+  const pend = o.total - o.marked;  // sin marcar = por escuchar
+  return '<div class="sv-row">'
+    + '<div class="sv-rank">' + (i + 1) + '</div>'
+    + '<div class="sv-main">'
+      + '<div class="sv-name">' + esc(o.key) + '</div>'
+      + '<div class="sv-sub">'
+        + '<span>❤❤ ' + o.g2 + '</span><span>❤ ' + o.g + '</span>'
+        + '<span>⬇ ' + o.dl + '</span><span>✕ ' + o.x + '</span>'
+        + '<span class="sv-pend" style="color:' + (pend > 0 ? 'var(--acc2)' : 'var(--dim)') + '">▶ ' + pend + ' por escuchar</span>'
+        + '<span>· ' + o.total + ' en catálogo</span>'
+      + '</div>'
+    + '</div>'
+    + '<div class="sv-rate">'
+      + '<div class="sv-pct" style="color:' + col + '">' + pct + '%</div>'
+      + '<div class="sv-bar"><span style="width:' + pct + '%;background:' + col + '"></span></div>'
+      + '<div class="sv-n">' + o.hits + '/' + o.marked + '</div>'
+    + '</div>'
+  + '</div>';
+}
+
 function renderStats(){
   const by = statsBy;
   const min = Math.max(1, parseInt(document.getElementById('svMin').value, 10) || 1);
@@ -1580,34 +1607,41 @@ function renderStats(){
     .sort((a, b) => (b.rate - a.rate) || (b.marked - a.marked) || a.key.localeCompare(b.key, 'es'));
 
   const noun = by === 'a' ? 'artistas' : 'cuentas';
-  document.getElementById('svNote').textContent =
-    rows.length + ' ' + noun + ' con ≥' + min + ' marcados (de ' + conMarcas + ' con alguna marca). Ordenado por tasa de acierto.';
-
+  const grouped = (by === 'cta') && FOLLOWING.size > 0;  // solo separa por seguir/no-seguir en vista por cuenta y con lista de seguidos
   const el = document.getElementById('svList');
+
+  document.getElementById('svNote').textContent =
+    rows.length + ' ' + noun + ' con ≥' + min + ' marcados (de ' + conMarcas + ' con alguna marca).'
+    + (grouped ? ' Separadas por si las sigues.'
+        : (by === 'cta' ? ' (Corre el scan de seguidos para separar seguidas / dejadas de seguir.)'
+                        : ' Ordenado por tasa de acierto.'));
+
   if (!rows.length) {
     el.innerHTML = '<div class="sv-empty">Ninguna ' + noun.slice(0, -1) +
       ' con al menos ' + min + ' track(s) marcado(s).<br>Marca tracks en Escuchar (❤❤ / ❤ / ⬇ / ✕) y vuelve, o baja el mínimo.</div>';
     return;
   }
-  el.innerHTML = rows.map((o, i) => {
-    const pct = Math.round(o.rate * 100);
-    const col = rateColor(o.rate);
-    return '<div class="sv-row">'
-      + '<div class="sv-rank">' + (i + 1) + '</div>'
-      + '<div class="sv-main">'
-        + '<div class="sv-name">' + esc(o.key) + '</div>'
-        + '<div class="sv-sub">'
-          + '<span>❤❤ ' + o.g2 + '</span><span>❤ ' + o.g + '</span>'
-          + '<span>⬇ ' + o.dl + '</span><span>✕ ' + o.x + '</span>'
-          + '<span>· ' + o.total + ' en catálogo</span>'
-        + '</div>'
-      + '</div>'
-      + '<div class="sv-rate">'
-        + '<div class="sv-pct" style="color:' + col + '">' + pct + '%</div>'
-        + '<div class="sv-bar"><span style="width:' + pct + '%;background:' + col + '"></span></div>'
-        + '<div class="sv-n">' + o.hits + '/' + o.marked + '</div>'
-      + '</div>'
-    + '</div>';
+
+  if (!grouped) {
+    el.innerHTML = rows.map((o, i) => statRowHTML(o, i)).join('');
+    return;
+  }
+
+  const groups = { sigo: [], deje: [], candidata: [] };
+  rows.forEach(o => {
+    const g = FOLLOWING.has(o.key) ? 'sigo' : (o.hasMis ? 'deje' : 'candidata');
+    groups[g].push(o);
+  });
+  const secs = [
+    ['sigo', '✅ Sigues'],
+    ['deje', '🚫 Dejaste de seguir'],
+    ['candidata', '🔎 Candidatas a seguir (GALLiVANTER)'],
+  ];
+  el.innerHTML = secs.map(([k, title]) => {
+    const g = groups[k];
+    if (!g.length) return '';
+    return '<div class="sv-sech">' + title + ' (' + g.length + ')</div>'
+      + g.map((o, i) => statRowHTML(o, i)).join('');
   }).join('');
 }
 
@@ -1627,6 +1661,7 @@ document.getElementById('svSeg').addEventListener('click', e => {
 
 if (DEV_MODE) {
   TRACKS = DEV_TRACKS;
+  FOLLOWING = new Set(['davo','djchrisstussy']);
   populateAccountsDropdown();
   render();
   syncHeaderHeight();
@@ -1646,12 +1681,13 @@ if (DEV_MODE) {
     .then(payload => {
       const arr = (payload && payload.t) ? payload.t : (Array.isArray(payload) ? payload : []);
       if (!arr.length) throw new Error('vacío');
+      FOLLOWING = new Set((payload && payload.following) || []);
       return arr;
     })
     .catch(() => {
       // Fallback a la URL de producción
       return loadTracks(TRACKS_URL_FALLBACK)
-        .then(payload => (payload && payload.t) ? payload.t : (Array.isArray(payload) ? payload : []));
+        .then(payload => { FOLLOWING = new Set((payload && payload.following) || []); return (payload && payload.t) ? payload.t : (Array.isArray(payload) ? payload : []); });
     })
     .then(arr => {
       TRACKS = arr;
