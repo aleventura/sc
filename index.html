@@ -157,6 +157,7 @@
   .badge.tipo-up{background:var(--t-ok);color:var(--ok);border:1px solid var(--ok);font-weight:700;font-size:10px;padding:1px 6px;letter-spacing:.5px}
   .badge.tipo-rep{background:var(--t-acc2);color:var(--acc2);border:1px solid var(--acc2);font-weight:700;font-size:10px;padding:1px 6px;letter-spacing:.5px}
   .badge.src{background:var(--btn);color:var(--dim);border:1px solid var(--border);font-size:10px;padding:1px 6px;letter-spacing:.3px}
+  .badge.crit{background:var(--btn);color:var(--dim);border:1px solid var(--border);font-size:10px;padding:1px 6px;letter-spacing:.3px}
   .actions{display:flex;gap:6px;margin-top:6px;flex-wrap:wrap}
   .row-break{flex-basis:100%;height:0}
   .btn{flex:1;padding:8px 6px;background:var(--btn);border:1px solid var(--border);
@@ -393,6 +394,9 @@
       <select class="search-input" id="selectAccount">
         <option value="">👤 Todas las cuentas</option>
       </select>
+      <select class="search-input" id="selectCrit">
+        <option value="">🔎 Todos los nombres</option>
+      </select>
     </div>
   </div>
 </header>
@@ -475,7 +479,7 @@ const LS_QUEUE = 'sc_queue_v1';
 // Modo producción: carga tracks.json real y sincroniza con Google Sheet.
 // Versión del build. Subila cada vez que publiques para confirmar que
 // GitHub Pages ya sirve la última (se muestra arriba a la derecha).
-const APP_VERSION = 'v24-k';
+const APP_VERSION = 'v24-l';
 const DEV_MODE = false;
 const DEV_TRACKS = [
   {id:"davo--track1",u:"https://soundcloud.com/maccabihouse/daft-punk-hbfs-rafael-maccabi-edit",t:"Daft Punk - HBFS (Rafael Maccabi Edit)",a:"Maccabi House",d:"2026-06-15",r:3421,c:187,l:12450,g:"Indie Dance",dur:6.4,dl:"hypeddit",dlu:"https://hypeddit.com/example",cta:"davo",tipo:"REP",src:"Mis seguidos",added:"2026-07-12"},
@@ -500,6 +504,7 @@ let queue = JSON.parse(localStorage.getItem(LS_QUEUE) || '[]');  // ids de track
 let filterState = 'nuevos';
 let filterAccount = null;  // cuenta seleccionada del dropdown o null
 let filterSource = null;   // origen/fuente seleccionado del dropdown o null
+let filterCrit = null;     // criterio: nombre buscado en el título (o null)
 let sortBy = 'fecha';
 let currentPlayingUrl = null;  // track cuyo widget está abierto (o null)
 let filteredTracks = [];       // lista visible actual (para playNext)
@@ -657,6 +662,7 @@ function passesFilter(t){
 
   if (filterAccount && (t.cta || '') !== filterAccount) return false;
   if (filterSource && (t.src || '') !== filterSource) return false;
+  if (filterCrit && (t.crit || '') !== filterCrit) return false;
   return true;
 }
 
@@ -728,6 +734,14 @@ function render(){
         render();
       });
     });
+    list.querySelectorAll('[data-crit]').forEach(el => {
+      el.addEventListener('click', () => {
+        filterCrit = el.dataset.crit;
+        document.getElementById('selectCrit').value = filterCrit;
+        populateAccountsDropdown();
+        render();
+      });
+    });
   }
 
   // Filtros activos (cuenta) — chip removible + botón bulk-descartar
@@ -739,9 +753,12 @@ function render(){
   if (filterSource) {
     chips.push('<span class="active-filter" data-clear="source">Origen: ' + esc(filterSource) + '</span>');
   }
+  if (filterCrit) {
+    chips.push('<span class="active-filter" data-clear="crit">Nombre: ' + esc(filterCrit) + '</span>');
+  }
 
   // Botón bulk-descartar: aparece si hay filtro por cuenta activo (para no descartar todos los "Nuevos" por accidente)
-  const hasFilter = filterAccount || filterSource;
+  const hasFilter = filterAccount || filterSource || filterCrit;
   const notAlreadyDescartados = filterState !== 'descartados'; // no tiene sentido descartar los ya descartados
   if (hasFilter && notAlreadyDescartados && filtered.length > 0) {
     chips.push('<button class="bulk-btn" data-bulk="x">Descartar ' + fmt(filtered.length) + ' visibles</button>');
@@ -759,6 +776,10 @@ function render(){
         filterSource = null;
         document.getElementById('selectSource').value = '';
       }
+      if (el.dataset.clear === 'crit') {
+        filterCrit = null;
+        document.getElementById('selectCrit').value = '';
+      }
       populateAccountsDropdown();
       render();
     });
@@ -769,6 +790,7 @@ function render(){
       const _parts = [];
       if (filterAccount) _parts.push('  Cuenta: ' + filterAccount);
       if (filterSource) _parts.push('  Origen: ' + filterSource);
+      if (filterCrit) _parts.push('  Nombre: ' + filterCrit);
       const context = _parts.length ? '\n\nFiltro activo:\n' + _parts.join('\n') : '';
       const msg = '¿Descartar ' + fmt(n) + ' tracks?' + context + '\n\nEsta acción se puede revertir uno por uno desde la vista "Descartados".';
       if (!confirm(msg)) return;
@@ -863,6 +885,11 @@ function cardHTML(t){
     ? '<span class="badge src" data-source="' + esc(t.src) + '" title="Filtrar por origen">📥 ' + esc(t.src) + '</span>'
     : '';
 
+  // Badge de criterio (nombre buscado en el título); clickeable para filtrar
+  const critBadge = t.crit
+    ? '<span class="badge crit" data-crit="' + esc(t.crit) + '" title="Filtrar por nombre en título">🔎 ' + esc(t.crit) + '</span>'
+    : '';
+
   // Link de descarga: muestra el servicio (hypeddit, bandcamp, etc.) en vez de "link" genérico
   const dlText = dlLabel(t.dl);
   const dlLink = (t.dlu && dlText)
@@ -880,6 +907,7 @@ function cardHTML(t){
         <span class="name" data-artist-url="${esc(artistUrl)}">${esc(artist)}</span>
         ${dlLink}
         ${srcBadge}
+        ${critBadge}
       </div>`;
   } else if (artist) {
     // "Artista [UP] link" — artista con color verde coordinado al badge UP
@@ -889,6 +917,7 @@ function cardHTML(t){
         ${tipoBadge}
         ${dlLink}
         ${srcBadge}
+        ${critBadge}
       </div>`;
   }
 
@@ -1464,6 +1493,12 @@ document.getElementById('selectSource').addEventListener('change', e => {
   render();
 });
 
+document.getElementById('selectCrit').addEventListener('change', e => {
+  filterCrit = e.target.value || null;
+  populateAccountsDropdown();
+  render();
+});
+
 // Puebla el <select> con las cuentas presentes en la vista actual (según filterState).
 // No aplica filterAccount para que puedas seguir viendo las opciones disponibles.
 function populateAccountsDropdown(){
@@ -1477,6 +1512,7 @@ function populateAccountsDropdown(){
         if (filterState === 'descargados' && s !== 'dl') return false;
         if (filterState === 'descartados' && s !== 'x') return false;
         if (filterSource && (t.src || '') !== filterSource) return false;
+        if (filterCrit && (t.crit || '') !== filterCrit) return false;
         return true;
       })
       .map(t => t.cta)
@@ -1510,6 +1546,7 @@ function populateSourceDropdown(){
         if (filterState === 'descargados' && s !== 'dl') return false;
         if (filterState === 'descartados' && s !== 'x') return false;
         if (filterAccount && (t.cta || '') !== filterAccount) return false;
+        if (filterCrit && (t.crit || '') !== filterCrit) return false;
         return true;
       })
       .map(t => t.src)
@@ -1523,6 +1560,39 @@ function populateSourceDropdown(){
 
   if (current && !sources.includes(current)) {
     filterSource = null;
+    select.value = '';
+  } else {
+    select.value = current;
+  }
+  populateCritDropdown();
+}
+
+// Puebla el <select> de nombres (criterio) presentes en la vista actual.
+function populateCritDropdown(){
+  const crits = [...new Set(
+    TRACKS
+      .filter(t => {
+        const s = getState(t.id);
+        if (filterState === 'nuevos' && s) return false;
+        if (filterState === 'g' && s !== 'g') return false;
+        if (filterState === 'g2' && s !== 'g2') return false;
+        if (filterState === 'descargados' && s !== 'dl') return false;
+        if (filterState === 'descartados' && s !== 'x') return false;
+        if (filterAccount && (t.cta || '') !== filterAccount) return false;
+        if (filterSource && (t.src || '') !== filterSource) return false;
+        return true;
+      })
+      .map(t => t.crit)
+      .filter(Boolean)
+  )].sort((a, b) => a.localeCompare(b, 'es'));
+
+  const select = document.getElementById('selectCrit');
+  const current = select.value;
+  select.innerHTML = '<option value="">🔎 Todos los nombres (' + crits.length + ')</option>' +
+    crits.map(a => '<option value="' + esc(a) + '">' + esc(a) + '</option>').join('');
+
+  if (current && !crits.includes(current)) {
+    filterCrit = null;
     select.value = '';
   } else {
     select.value = current;
