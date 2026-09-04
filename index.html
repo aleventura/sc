@@ -109,11 +109,11 @@
   .card{background:var(--card);border:1px solid var(--border);border-radius:12px;
     padding:10px 12px;margin-bottom:8px;max-height:1000px}
   .card.hidden{display:none}
-  .title{font-size:18px;font-weight:600;margin:0 0 4px;line-height:1.3}
-  .meta{display:flex;gap:10px;flex-wrap:wrap;font-size:14px;color:var(--dim);margin-bottom:6px}
+  .title{font-size:21px;font-weight:600;margin:0 0 4px;line-height:1.3}
+  .meta{display:flex;gap:10px;flex-wrap:wrap;font-size:15px;color:var(--dim);margin-bottom:6px}
   .meta .a{color:var(--fg)}
   .meta .dl{color:var(--acc)}
-  .who{display:flex;gap:4px;align-items:center;flex-wrap:wrap;font-size:14px;margin-bottom:6px}
+  .who{display:flex;gap:4px;align-items:center;flex-wrap:wrap;font-size:16px;margin-bottom:6px}
   .who .name{cursor:pointer;padding:2px 6px;background:var(--btn);
     border-radius:4px;border:1px solid transparent;transition:background .2s ease,border-color .2s ease}
   .who .name:active{background:var(--btn-hover);border-color:var(--acc2)}
@@ -196,8 +196,8 @@
   .player.visible .pl-mini{transform:translateY(0)}
   .player.open .pl-mini{transform:translateY(115%)}
   .pl-info{flex:1 1 auto;min-width:0;cursor:pointer}
-  .pl-t{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .pl-a{font-size:11px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .pl-t{font-size:16px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .pl-a{font-size:14px;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .pl-round{flex:0 0 auto;width:40px;height:40px;border-radius:50%;
     background:var(--acc);border:0;color:var(--on-acc);font-size:15px;cursor:pointer;
     display:flex;align-items:center;justify-content:center;transition:transform .1s ease}
@@ -252,19 +252,20 @@
     transition:background .2s ease,color .2s ease,border-color .2s ease}
   .btn.queue.queued{background:var(--ok);border-color:var(--ok);color:var(--on-ok)}
   .pl-full-body{flex:1 1 auto;display:flex;flex-direction:column;justify-content:flex-end;gap:12px}
-  .pl-full-title{font-size:20px;font-weight:700;line-height:1.25}
-  .pl-full-who{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:17px}
+  .pl-full-title{font-size:24px;font-weight:700;line-height:1.25}
+  .pl-full-who{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:19px}
   /* Las reglas de color viven bajo .who, que acá no aplica: el panel necesita
      las suyas o el nombre sale en el color del texto normal. */
-  .pl-full-who .name{font-size:17px;font-weight:700;line-height:1.2}
+  .pl-full-who .name{font-size:19px;font-weight:700;line-height:1.2}
   .pl-full-who .name.artist-up{color:var(--ok)}
   .pl-full-who .name.reposter{color:var(--acc2)}
+  .pl-full-who .sep{color:var(--dim)}
   /* Barra de progreso del panel expandido. La de la mini barra queda tapada
      por el panel (z-index), así que el panel necesita la suya. */
   .pl-bar{height:8px;background:var(--btn);border:1px solid var(--border);
     border-radius:5px;overflow:hidden}
   .pl-bar-fill{height:100%;width:0;background:var(--acc);transition:width .25s linear}
-  .pl-times{display:flex;justify-content:space-between;font-size:12px;
+  .pl-times{display:flex;justify-content:space-between;font-size:13px;
     color:var(--dim);font-variant-numeric:tabular-nums;margin-top:-4px}
   .pl-row{display:flex;gap:8px}
   .pl-row .btn{flex:1 1 0}
@@ -483,7 +484,7 @@ const LS_QUEUE = 'sc_queue_v1';
 // Modo producción: carga tracks.json real y sincroniza con Google Sheet.
 // Versión del build. Subila cada vez que publiques para confirmar que
 // GitHub Pages ya sirve la última (se muestra arriba a la derecha).
-const APP_VERSION = 'v24-p';
+const APP_VERSION = 'v24-q';
 const DEV_MODE = false;
 const DEV_TRACKS = [
   {id:"davo--track1",u:"https://soundcloud.com/maccabihouse/daft-punk-hbfs-rafael-maccabi-edit",t:"Daft Punk - HBFS (Rafael Maccabi Edit)",a:"Maccabi House",d:"2026-06-15",r:3421,c:187,l:12450,g:"Indie Dance",dur:6.4,dl:"hypeddit",dlu:"https://hypeddit.com/example",cta:"davo",tipo:"REP",src:"Mis seguidos",added:"2026-07-12"},
@@ -1240,9 +1241,16 @@ function updatePlayerUI(){
     esc(dlLabel(t.dl)) + '</a>' : '';
   const tipo = t.tipo === 'UP' ? '<span class="badge tipo-up">UP</span>'
     : t.tipo === 'REP' ? '<span class="badge tipo-rep">REP</span>' : '';
-  document.getElementById('plFullWho').innerHTML =
-    '<span class="name ' + (t.tipo === 'UP' ? 'artist-up' : 'reposter') + '">' +
-    esc(t.tipo === 'REP' ? (t.cta || t.a) : t.a) + '</span>' + tipo + dl;
+  // Mostrar cuenta Y artista (v24-q): cuenta primero (acc2), artista después (verde); dedup si iguales.
+  const _acc = t.cta || '', _art = t.a || '';
+  const _pnames = [];
+  if (_acc) _pnames.push(_acc);
+  if (_art && _art.toLowerCase() !== _acc.toLowerCase()) _pnames.push(_art);
+  if (!_pnames.length && _art) _pnames.push(_art);
+  const _whoHTML = _pnames.map((n, i) =>
+    '<span class="name ' + (i === 0 ? 'reposter' : 'artist-up') + '">' + esc(n) + '</span>'
+  ).join('<span class="sep">·</span>');
+  document.getElementById('plFullWho').innerHTML = _whoHTML + tipo + dl;
 
   const s = getState(t.id);
   document.getElementById('plMarks').innerHTML =
