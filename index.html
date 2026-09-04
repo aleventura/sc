@@ -293,7 +293,8 @@
   .card{transition:border-color .2s ease}
   .card.playing{border-color:var(--acc)}
   /* Card con ícono de play a la izquierda */
-  .card-main{display:flex;align-items:flex-start;gap:10px}
+  .card-main{display:flex;align-items:flex-start;gap:10px;margin-bottom:6px}
+  .card-main .title{flex:1 1 auto;min-width:0;margin:0}
   .card-play{flex:0 0 auto;width:38px;height:38px;border-radius:50%;
     background:var(--btn);border:1px solid var(--border);color:var(--fg);
     font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;
@@ -484,7 +485,7 @@ const LS_QUEUE = 'sc_queue_v1';
 // Modo producción: carga tracks.json real y sincroniza con Google Sheet.
 // Versión del build. Subila cada vez que publiques para confirmar que
 // GitHub Pages ya sirve la última (se muestra arriba a la derecha).
-const APP_VERSION = 'v24-q';
+const APP_VERSION = 'v24-r';
 const DEV_MODE = false;
 const DEV_TRACKS = [
   {id:"davo--track1",u:"https://soundcloud.com/maccabihouse/daft-punk-hbfs-rafael-maccabi-edit",t:"Daft Punk - HBFS (Rafael Maccabi Edit)",a:"Maccabi House",d:"2026-06-15",r:3421,c:187,l:12450,g:"Indie Dance",dur:6.4,dl:"hypeddit",dlu:"https://hypeddit.com/example",cta:"davo",tipo:"REP",src:"Mis seguidos",added:"2026-07-12"},
@@ -587,7 +588,7 @@ function applySync(){
   const el = document.getElementById('sync');
   if (!el) return;
   el.className = 'stats-sync ' + lastSync.kind;
-  el.textContent = lastSync.msg ? ' · ' + lastSync.msg : '';
+  el.textContent = (lastSync.msg && lastSync.kind !== 'ok') ? ' · ' + lastSync.msg : '';
 }
 
 // ============================================================
@@ -830,7 +831,7 @@ function render(){
   // Línea 1: cantidad visible / total (más grande, prominente)
   // Línea 2: desglose por estado (❤❤ primero, luego ❤, ✕, Nuevos)
   document.getElementById('stats').innerHTML =
-    '<span class="stats-main">' + fmt(filtered.length) + ' <span class="stats-slash">/</span> ' + fmt(total) + '<span id="sync" class="stats-sync"></span></span>';
+    '<span class="stats-main">Cargados ' + fmt(total) + '<span id="sync" class="stats-sync"></span></span>';
   // v24-p: los contadores por estado van EN los chips de filtro (no en pills aparte)
   const _setChip = (st, label) => {
     const c = document.querySelector('#stateFilters .chip[data-state="' + st + '"]');
@@ -948,19 +949,17 @@ function cardHTML(t){
     <div class="card ${isCurrent ? 'playing' : ''}" data-track-id="${esc(t.id)}">
       <div class="card-main">
         <button class="card-play ${isCurrent ? 'on' : ''}" data-play="${esc(t.u)}" aria-label="Reproducir">${playing ? '⏸' : '▶'}</button>
-        <div class="card-body">
-          <div class="title">${esc(t.t)}</div>
-          ${whoHTML}
-          <div class="meta">
-            <span>${esc(t.d)}</span>
-            ${t.added ? '<span title="Agregado al catálogo">+ ' + esc(t.added) + '</span>' : ''}
-            <span>♻ ${fmt(t.r)}</span>
-            <span>💬 ${fmt(t.c)}</span>
-          </div>
-          ${stateBadge ? '<div class="badges">' + stateBadge + '</div>' : ''}
-        </div>
+        <div class="title">${esc(t.t)}</div>
         <button class="card-q" data-queue="${esc(t.id)}" title="Poner a continuación">＋</button>
       </div>
+      ${whoHTML}
+      <div class="meta">
+        <span>${esc(t.d)}</span>
+        ${t.added ? '<span title="Agregado al catálogo">+ ' + esc(t.added) + '</span>' : ''}
+        <span>♻ ${fmt(t.r)}</span>
+        <span>💬 ${fmt(t.c)}</span>
+      </div>
+      ${stateBadge ? '<div class="badges">' + stateBadge + '</div>' : ''}
     </div>
   `;
 }
