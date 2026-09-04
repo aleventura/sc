@@ -331,34 +331,36 @@
   .stats-head{position:sticky;top:0;background:var(--bg);border-bottom:1px solid var(--border);
     padding:calc(env(safe-area-inset-top,0px) + 10px) 12px 10px;display:flex;flex-wrap:wrap;
     gap:8px;align-items:center;z-index:1}
-  .sv-title{font-size:15px;font-weight:700;margin-right:auto}
+  .sv-title{font-size:17px;font-weight:700;margin-right:auto}
   .sv-back{background:var(--btn);border:1px solid var(--border);color:var(--fg);
-    border-radius:8px;padding:6px 10px;font-size:14px;cursor:pointer}
+    border-radius:8px;padding:6px 10px;font-size:15px;cursor:pointer}
   .sv-back:active{background:var(--btn-hover)}
   .sv-seg{display:flex;gap:4px}
   .sv-seg button{background:var(--btn);border:1px solid var(--border);color:var(--fg);
-    border-radius:8px;padding:6px 10px;font-size:13px;cursor:pointer}
+    border-radius:8px;padding:6px 10px;font-size:14px;cursor:pointer}
   .sv-seg button.active{background:var(--acc2);border-color:var(--acc2);color:var(--on-acc2)}
-  .sv-min{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--dim)}
+  .sv-min{display:flex;align-items:center;gap:6px;font-size:14px;color:var(--dim)}
   .sv-min input{width:54px;background:var(--btn);border:1px solid var(--border);color:var(--fg);
-    border-radius:6px;padding:5px 6px;font-size:13px}
+    border-radius:6px;padding:5px 6px;font-size:14px}
   .sv-list{padding:8px 10px}
-  .sv-note{font-size:12px;color:var(--dim);padding:2px 12px 8px}
+  .sv-note{font-size:13px;color:var(--dim);padding:2px 12px 8px}
   .sv-row{background:var(--card);border:1px solid var(--border);border-radius:10px;
     padding:10px 12px;margin-bottom:8px;display:flex;align-items:center;gap:10px}
-  .sv-rank{flex:0 0 auto;font-size:12px;color:var(--dim);width:24px;text-align:right}
+  .sv-rank{flex:0 0 auto;font-size:13px;color:var(--dim);width:24px;text-align:right}
   .sv-main{flex:1 1 auto;min-width:0}
-  .sv-name{font-size:14px;font-weight:600;color:var(--fg);overflow:hidden;
+  .sv-name{font-size:16px;font-weight:600;color:var(--fg);overflow:hidden;
     text-overflow:ellipsis;white-space:nowrap}
-  .sv-sub{font-size:11px;color:var(--dim);margin-top:3px;display:flex;gap:8px;flex-wrap:wrap}
+  .sv-sub{font-size:13px;color:var(--dim);margin-top:3px;display:flex;gap:8px;flex-wrap:wrap}
   .sv-rate{flex:0 0 auto;text-align:right;min-width:70px}
-  .sv-pct{font-size:20px;font-weight:700;line-height:1}
+  .sv-pct{font-size:23px;font-weight:700;line-height:1}
   .sv-bar{height:5px;border-radius:3px;background:var(--btn);margin:5px 0 0 auto;overflow:hidden;width:66px}
   .sv-bar>span{display:block;height:100%}
-  .sv-n{font-size:11px;color:var(--dim);margin-top:3px}
+  .sv-n{font-size:12px;color:var(--dim);margin-top:3px}
   .sv-empty{padding:30px 16px;text-align:center;color:var(--dim);line-height:1.5}
-  .sv-sech{font-size:13px;font-weight:700;color:var(--fg);padding:14px 4px 6px;border-top:1px solid var(--border);margin-top:6px}
+  .sv-sech{font-size:15px;font-weight:700;color:var(--fg);padding:14px 4px 6px;border-top:1px solid var(--border);margin-top:6px}
   .sv-list > .sv-sech:first-child{border-top:none;margin-top:0}
+  .sv-pend-link{cursor:pointer;text-decoration:underline;text-underline-offset:2px}
+  .sv-pend-link:active{opacity:.6}
 </style>
 </head>
 <body>
@@ -479,7 +481,7 @@ const LS_QUEUE = 'sc_queue_v1';
 // Modo producción: carga tracks.json real y sincroniza con Google Sheet.
 // Versión del build. Subila cada vez que publiques para confirmar que
 // GitHub Pages ya sirve la última (se muestra arriba a la derecha).
-const APP_VERSION = 'v24-l';
+const APP_VERSION = 'v24-m';
 const DEV_MODE = false;
 const DEV_TRACKS = [
   {id:"davo--track1",u:"https://soundcloud.com/maccabihouse/daft-punk-hbfs-rafael-maccabi-edit",t:"Daft Punk - HBFS (Rafael Maccabi Edit)",a:"Maccabi House",d:"2026-06-15",r:3421,c:187,l:12450,g:"Indie Dance",dur:6.4,dl:"hypeddit",dlu:"https://hypeddit.com/example",cta:"davo",tipo:"REP",src:"Mis seguidos",added:"2026-07-12"},
@@ -505,6 +507,7 @@ let filterState = 'nuevos';
 let filterAccount = null;  // cuenta seleccionada del dropdown o null
 let filterSource = null;   // origen/fuente seleccionado del dropdown o null
 let filterCrit = null;     // criterio: nombre buscado en el título (o null)
+let filterArtist = null;   // artista (t.a); sin dropdown, se setea desde Stats
 let sortBy = 'fecha';
 let currentPlayingUrl = null;  // track cuyo widget está abierto (o null)
 let filteredTracks = [];       // lista visible actual (para playNext)
@@ -663,6 +666,7 @@ function passesFilter(t){
   if (filterAccount && (t.cta || '') !== filterAccount) return false;
   if (filterSource && (t.src || '') !== filterSource) return false;
   if (filterCrit && (t.crit || '') !== filterCrit) return false;
+  if (filterArtist && (t.a || '') !== filterArtist) return false;
   return true;
 }
 
@@ -756,9 +760,12 @@ function render(){
   if (filterCrit) {
     chips.push('<span class="active-filter" data-clear="crit">Nombre: ' + esc(filterCrit) + '</span>');
   }
+  if (filterArtist) {
+    chips.push('<span class="active-filter" data-clear="artist">Artista: ' + esc(filterArtist) + '</span>');
+  }
 
   // Botón bulk-descartar: aparece si hay filtro por cuenta activo (para no descartar todos los "Nuevos" por accidente)
-  const hasFilter = filterAccount || filterSource || filterCrit;
+  const hasFilter = filterAccount || filterSource || filterCrit || filterArtist;
   const notAlreadyDescartados = filterState !== 'descartados'; // no tiene sentido descartar los ya descartados
   if (hasFilter && notAlreadyDescartados && filtered.length > 0) {
     chips.push('<button class="bulk-btn" data-bulk="x">Descartar ' + fmt(filtered.length) + ' visibles</button>');
@@ -780,6 +787,9 @@ function render(){
         filterCrit = null;
         document.getElementById('selectCrit').value = '';
       }
+      if (el.dataset.clear === 'artist') {
+        filterArtist = null;
+      }
       populateAccountsDropdown();
       render();
     });
@@ -791,6 +801,7 @@ function render(){
       if (filterAccount) _parts.push('  Cuenta: ' + filterAccount);
       if (filterSource) _parts.push('  Origen: ' + filterSource);
       if (filterCrit) _parts.push('  Nombre: ' + filterCrit);
+      if (filterArtist) _parts.push('  Artista: ' + filterArtist);
       const context = _parts.length ? '\n\nFiltro activo:\n' + _parts.join('\n') : '';
       const msg = '¿Descartar ' + fmt(n) + ' tracks?' + context + '\n\nEsta acción se puede revertir uno por uno desde la vista "Descartados".';
       if (!confirm(msg)) return;
@@ -1513,6 +1524,7 @@ function populateAccountsDropdown(){
         if (filterState === 'descartados' && s !== 'x') return false;
         if (filterSource && (t.src || '') !== filterSource) return false;
         if (filterCrit && (t.crit || '') !== filterCrit) return false;
+        if (filterArtist && (t.a || '') !== filterArtist) return false;
         return true;
       })
       .map(t => t.cta)
@@ -1547,6 +1559,7 @@ function populateSourceDropdown(){
         if (filterState === 'descartados' && s !== 'x') return false;
         if (filterAccount && (t.cta || '') !== filterAccount) return false;
         if (filterCrit && (t.crit || '') !== filterCrit) return false;
+        if (filterArtist && (t.a || '') !== filterArtist) return false;
         return true;
       })
       .map(t => t.src)
@@ -1580,6 +1593,7 @@ function populateCritDropdown(){
         if (filterState === 'descartados' && s !== 'x') return false;
         if (filterAccount && (t.cta || '') !== filterAccount) return false;
         if (filterSource && (t.src || '') !== filterSource) return false;
+        if (filterArtist && (t.a || '') !== filterArtist) return false;
         return true;
       })
       .map(t => t.crit)
@@ -1644,7 +1658,7 @@ function rateColor(r){
   return 'var(--no)';
 }
 
-function statRowHTML(o, i){
+function statRowHTML(o, i, by){
   const pct = Math.round(o.rate * 100);
   const col = rateColor(o.rate);
   const pend = o.total - o.marked;  // sin marcar = por escuchar
@@ -1655,7 +1669,7 @@ function statRowHTML(o, i){
       + '<div class="sv-sub">'
         + '<span>❤❤ ' + o.g2 + '</span><span>❤ ' + o.g + '</span>'
         + '<span>⬇ ' + o.dl + '</span><span>✕ ' + o.x + '</span>'
-        + '<span class="sv-pend" style="color:' + (pend > 0 ? 'var(--acc2)' : 'var(--dim)') + '">▶ ' + pend + ' por escuchar</span>'
+        + '<span class="sv-pend' + (pend > 0 ? ' sv-pend-link' : '') + '"' + (pend > 0 ? ' role="button" tabindex="0" data-stat-by="' + by + '" data-stat-key="' + esc(o.key) + '" title="Ver los ' + pend + ' sin escuchar en el listado"' : '') + ' style="color:' + (pend > 0 ? 'var(--acc2)' : 'var(--dim)') + '">▶ ' + pend + ' por escuchar</span>'
         + '<span>· ' + o.total + ' en catálogo</span>'
       + '</div>'
     + '</div>'
@@ -1693,7 +1707,7 @@ function renderStats(){
   }
 
   if (!grouped) {
-    el.innerHTML = rows.map((o, i) => statRowHTML(o, i)).join('');
+    el.innerHTML = rows.map((o, i) => statRowHTML(o, i, by)).join('');
     return;
   }
 
@@ -1711,7 +1725,7 @@ function renderStats(){
     const g = groups[k];
     if (!g.length) return '';
     return '<div class="sv-sech">' + title + ' (' + g.length + ')</div>'
-      + g.map((o, i) => statRowHTML(o, i)).join('');
+      + g.map((o, i) => statRowHTML(o, i, by)).join('');
   }).join('');
 }
 
@@ -1727,6 +1741,25 @@ document.getElementById('svSeg').addEventListener('click', e => {
   statsBy = b.dataset.by;
   document.querySelectorAll('#svSeg button').forEach(x => x.classList.toggle('active', x === b));
   renderStats();
+});
+
+// Click en "▶ N por escuchar" → listado en vista Nuevos, filtrado por esa cuenta/artista
+function statsGoTo(by, key){
+  filterState = 'nuevos';
+  document.querySelectorAll('#stateFilters .chip').forEach(c => c.classList.toggle('active', c.dataset.state === 'nuevos'));
+  filterAccount = null; filterSource = null; filterCrit = null; filterArtist = null;
+  if (by === 'a') filterArtist = key; else filterAccount = key;
+  const selA = document.getElementById('selectAccount'); if (selA) selA.value = (by === 'a' ? '' : key);
+  closeStats();
+  syncSortForView();
+  populateAccountsDropdown();
+  render();
+  window.scrollTo(0, 0);
+}
+document.getElementById('svList').addEventListener('click', e => {
+  const el = e.target.closest('[data-stat-key]');
+  if (!el) return;
+  statsGoTo(el.dataset.statBy, el.dataset.statKey);
 });
 
 if (DEV_MODE) {
