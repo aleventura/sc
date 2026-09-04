@@ -331,33 +331,33 @@
   .stats-head{position:sticky;top:0;background:var(--bg);border-bottom:1px solid var(--border);
     padding:calc(env(safe-area-inset-top,0px) + 10px) 12px 10px;display:flex;flex-wrap:wrap;
     gap:8px;align-items:center;z-index:1}
-  .sv-title{font-size:17px;font-weight:700;margin-right:auto}
+  .sv-title{font-size:19px;font-weight:700;margin-right:auto}
   .sv-back{background:var(--btn);border:1px solid var(--border);color:var(--fg);
-    border-radius:8px;padding:6px 10px;font-size:15px;cursor:pointer}
+    border-radius:8px;padding:6px 10px;font-size:16px;cursor:pointer}
   .sv-back:active{background:var(--btn-hover)}
   .sv-seg{display:flex;gap:4px}
   .sv-seg button{background:var(--btn);border:1px solid var(--border);color:var(--fg);
-    border-radius:8px;padding:6px 10px;font-size:14px;cursor:pointer}
+    border-radius:8px;padding:6px 10px;font-size:15px;cursor:pointer}
   .sv-seg button.active{background:var(--acc2);border-color:var(--acc2);color:var(--on-acc2)}
-  .sv-min{display:flex;align-items:center;gap:6px;font-size:14px;color:var(--dim)}
+  .sv-min{display:flex;align-items:center;gap:6px;font-size:15px;color:var(--dim)}
   .sv-min input{width:54px;background:var(--btn);border:1px solid var(--border);color:var(--fg);
-    border-radius:6px;padding:5px 6px;font-size:14px}
+    border-radius:6px;padding:5px 6px;font-size:15px}
   .sv-list{padding:8px 10px}
-  .sv-note{font-size:13px;color:var(--dim);padding:2px 12px 8px}
+  .sv-note{font-size:14px;color:var(--dim);padding:2px 12px 8px}
   .sv-row{background:var(--card);border:1px solid var(--border);border-radius:10px;
     padding:10px 12px;margin-bottom:8px;display:flex;align-items:center;gap:10px}
-  .sv-rank{flex:0 0 auto;font-size:13px;color:var(--dim);width:24px;text-align:right}
+  .sv-rank{flex:0 0 auto;font-size:14px;color:var(--dim);width:24px;text-align:right}
   .sv-main{flex:1 1 auto;min-width:0}
-  .sv-name{font-size:16px;font-weight:600;color:var(--fg);overflow:hidden;
+  .sv-name{font-size:19px;font-weight:600;color:var(--fg);overflow:hidden;
     text-overflow:ellipsis;white-space:nowrap}
-  .sv-sub{font-size:13px;color:var(--dim);margin-top:3px;display:flex;gap:8px;flex-wrap:wrap}
+  .sv-sub{font-size:15px;color:var(--dim);margin-top:3px;display:flex;gap:8px;flex-wrap:wrap}
   .sv-rate{flex:0 0 auto;text-align:right;min-width:70px}
-  .sv-pct{font-size:23px;font-weight:700;line-height:1}
+  .sv-pct{font-size:28px;font-weight:700;line-height:1}
   .sv-bar{height:5px;border-radius:3px;background:var(--btn);margin:5px 0 0 auto;overflow:hidden;width:66px}
   .sv-bar>span{display:block;height:100%}
-  .sv-n{font-size:12px;color:var(--dim);margin-top:3px}
+  .sv-n{font-size:14px;color:var(--dim);margin-top:3px}
   .sv-empty{padding:30px 16px;text-align:center;color:var(--dim);line-height:1.5}
-  .sv-sech{font-size:15px;font-weight:700;color:var(--fg);padding:14px 4px 6px;border-top:1px solid var(--border);margin-top:6px}
+  .sv-sech{font-size:17px;font-weight:700;color:var(--fg);padding:14px 4px 6px;border-top:1px solid var(--border);margin-top:6px}
   .sv-list > .sv-sech:first-child{border-top:none;margin-top:0}
   .sv-pend-link{cursor:pointer;text-decoration:underline;text-underline-offset:2px}
   .sv-pend-link:active{opacity:.6}
@@ -483,7 +483,7 @@ const LS_QUEUE = 'sc_queue_v1';
 // Modo producción: carga tracks.json real y sincroniza con Google Sheet.
 // Versión del build. Subila cada vez que publiques para confirmar que
 // GitHub Pages ya sirve la última (se muestra arriba a la derecha).
-const APP_VERSION = 'v24-n';
+const APP_VERSION = 'v24-o';
 const DEV_MODE = false;
 const DEV_TRACKS = [
   {id:"davo--track1",u:"https://soundcloud.com/maccabihouse/daft-punk-hbfs-rafael-maccabi-edit",t:"Daft Punk - HBFS (Rafael Maccabi Edit)",a:"Maccabi House",d:"2026-06-15",r:3421,c:187,l:12450,g:"Indie Dance",dur:6.4,dl:"hypeddit",dlu:"https://hypeddit.com/example",cta:"davo",tipo:"REP",src:"Mis seguidos",added:"2026-07-12"},
@@ -1232,7 +1232,12 @@ function updatePlayerUI(){
     return;
   }
   document.getElementById('plMiniTitle').textContent = t.t;
-  document.getElementById('plMiniArtist').textContent = t.a;
+  // Bajo el título: cuenta y artista (v24-o). Dedup si son iguales; si falta cuenta, solo artista.
+  const _who = [];
+  if (t.cta) _who.push(t.cta);
+  if (t.a && t.a !== t.cta) _who.push(t.a);
+  if (!_who.length && t.a) _who.push(t.a);
+  document.getElementById('plMiniArtist').textContent = _who.join('  ·  ');
   document.getElementById('plFullTitle').textContent = t.t;
 
   const dl = t.dlu ? '<a class="dl-link" href="' + esc(t.dlu) + '" target="_blank" rel="noopener">' +
