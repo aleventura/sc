@@ -98,8 +98,8 @@
   .filters{display:flex;gap:6px;overflow-x:auto;padding-bottom:6px;scrollbar-width:none}
   .filters::-webkit-scrollbar{display:none}
   /* Los filtros de estado ocupan todo el ancho, un icono cada uno */
-  #stateFilters{overflow-x:visible}
-  #stateFilters .chip{flex:1 1 0;padding:8px 4px;text-align:center;font-size:15px;min-width:0}
+  #stateFilters{overflow-x:auto}
+  #stateFilters .chip{flex:0 0 auto;padding:8px 12px;text-align:center;font-size:15px}
   .chip{flex:0 0 auto;padding:6px 10px;background:var(--btn);border:1px solid var(--border);
     border-radius:14px;color:var(--fg);font-size:13px;cursor:pointer;white-space:nowrap}
   .chip.active{background:var(--acc);border-color:var(--acc);color:var(--on-acc)}
@@ -109,11 +109,11 @@
   .card{background:var(--card);border:1px solid var(--border);border-radius:12px;
     padding:10px 12px;margin-bottom:8px;max-height:1000px}
   .card.hidden{display:none}
-  .title{font-size:15px;font-weight:600;margin:0 0 3px;line-height:1.3}
-  .meta{display:flex;gap:10px;flex-wrap:wrap;font-size:12px;color:var(--dim);margin-bottom:6px}
+  .title{font-size:18px;font-weight:600;margin:0 0 4px;line-height:1.3}
+  .meta{display:flex;gap:10px;flex-wrap:wrap;font-size:14px;color:var(--dim);margin-bottom:6px}
   .meta .a{color:var(--fg)}
   .meta .dl{color:var(--acc)}
-  .who{display:flex;gap:4px;align-items:center;flex-wrap:wrap;font-size:12px;margin-bottom:6px}
+  .who{display:flex;gap:4px;align-items:center;flex-wrap:wrap;font-size:14px;margin-bottom:6px}
   .who .name{cursor:pointer;padding:2px 6px;background:var(--btn);
     border-radius:4px;border:1px solid transparent;transition:background .2s ease,border-color .2s ease}
   .who .name:active{background:var(--btn-hover);border-color:var(--acc2)}
@@ -483,7 +483,7 @@ const LS_QUEUE = 'sc_queue_v1';
 // Modo producción: carga tracks.json real y sincroniza con Google Sheet.
 // Versión del build. Subila cada vez que publiques para confirmar que
 // GitHub Pages ya sirve la última (se muestra arriba a la derecha).
-const APP_VERSION = 'v24-o';
+const APP_VERSION = 'v24-p';
 const DEV_MODE = false;
 const DEV_TRACKS = [
   {id:"davo--track1",u:"https://soundcloud.com/maccabihouse/daft-punk-hbfs-rafael-maccabi-edit",t:"Daft Punk - HBFS (Rafael Maccabi Edit)",a:"Maccabi House",d:"2026-06-15",r:3421,c:187,l:12450,g:"Indie Dance",dur:6.4,dl:"hypeddit",dlu:"https://hypeddit.com/example",cta:"davo",tipo:"REP",src:"Mis seguidos",added:"2026-07-12"},
@@ -829,14 +829,18 @@ function render(){
   // Línea 1: cantidad visible / total (más grande, prominente)
   // Línea 2: desglose por estado (❤❤ primero, luego ❤, ✕, Nuevos)
   document.getElementById('stats').innerHTML =
-    '<span class="stats-main">' + fmt(filtered.length) + ' <span class="stats-slash">/</span> ' + fmt(total) + '<span id="sync" class="stats-sync"></span></span>' +
-    '<span class="stats-pills">' +
-      '<span class="stat-pill s-new">✨ ' + fmt(nvos) + '</span>' +
-      '<span class="stat-pill s-g2">❤❤ ' + fmt(g2s) + '</span>' +
-      '<span class="stat-pill s-g">❤ ' + fmt(gs) + '</span>' +
-      '<span class="stat-pill s-dl">⬇ ' + fmt(dls) + '</span>' +
-      '<span class="stat-pill s-x">✕ ' + fmt(xs) + '</span>' +
-    '</span>';
+    '<span class="stats-main">' + fmt(filtered.length) + ' <span class="stats-slash">/</span> ' + fmt(total) + '<span id="sync" class="stats-sync"></span></span>';
+  // v24-p: los contadores por estado van EN los chips de filtro (no en pills aparte)
+  const _setChip = (st, label) => {
+    const c = document.querySelector('#stateFilters .chip[data-state="' + st + '"]');
+    if (c) c.textContent = label;
+  };
+  _setChip('todos', 'Todos ' + fmt(total));
+  _setChip('nuevos', '✨ ' + fmt(nvos));
+  _setChip('g2', '❤❤ ' + fmt(g2s));
+  _setChip('g', '❤ ' + fmt(gs));
+  _setChip('descargados', '⬇ ' + fmt(dls));
+  _setChip('descartados', '✕ ' + fmt(xs));
   applySync();
 }
 
@@ -951,18 +955,10 @@ function cardHTML(t){
             ${t.added ? '<span title="Agregado al catálogo">+ ' + esc(t.added) + '</span>' : ''}
             <span>♻ ${fmt(t.r)}</span>
             <span>💬 ${fmt(t.c)}</span>
-            ${t.dur ? '<span>' + t.dur + 'min</span>' : ''}
-            ${t.g && t.g !== '-' ? '<span>' + esc(t.g) + '</span>' : ''}
           </div>
           ${stateBadge ? '<div class="badges">' + stateBadge + '</div>' : ''}
         </div>
         <button class="card-q" data-queue="${esc(t.id)}" title="Poner a continuación">＋</button>
-      </div>
-      <div class="card-marks">
-        <button class="btn mark g2 ${s === 'g2' ? 'on' : ''}" data-mark="${esc(t.id)}|g2" aria-label="Doble corazón">❤❤</button>
-        <button class="btn mark g ${s === 'g' ? 'on' : ''}" data-mark="${esc(t.id)}|g" aria-label="Un corazón">❤</button>
-        <button class="btn mark dl ${s === 'dl' ? 'on' : ''}" data-mark="${esc(t.id)}|dl" aria-label="Ya descargado">⬇</button>
-        <button class="btn mark x ${s === 'x' ? 'on' : ''}" data-mark="${esc(t.id)}|x" aria-label="Descartar">✕</button>
       </div>
     </div>
   `;
