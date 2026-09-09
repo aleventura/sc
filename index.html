@@ -110,7 +110,7 @@
     padding:10px 12px;margin-bottom:8px;max-height:1000px}
   .card.hidden{display:none}
   .title{font-size:21px;font-weight:600;margin:0 0 4px;line-height:1.3}
-  .meta{display:flex;gap:10px;flex-wrap:wrap;font-size:15px;color:var(--dim);margin-bottom:6px}
+  .meta{display:flex;gap:10px;flex-wrap:wrap;font-size:15px;color:var(--fg);margin-bottom:6px}
   .meta .a{color:var(--fg)}
   .meta .dl{color:var(--acc)}
   .who{display:flex;gap:4px;align-items:center;flex-wrap:wrap;font-size:16px;margin-bottom:6px}
@@ -118,7 +118,7 @@
     border-radius:4px;border:1px solid transparent;transition:background .2s ease,border-color .2s ease}
   .who .name:active{background:var(--btn-hover);border-color:var(--acc2)}
   /* Color coordinado con el badge de tipo */
-  .who .name.artist-up{color:var(--ok)}
+  .who .name.artist-up{color:var(--acc)}
   .who .name.artist-rep{color:var(--fg)}
   .who .name.reposter{color:var(--acc2)}
   .who .sep{color:var(--dim);font-size:11px}
@@ -152,11 +152,12 @@
   .badge.state-g2{background:var(--t-acc);color:var(--acc);border:1px solid var(--acc);font-weight:700}
   .badge.state-dl{background:var(--t-acc2);color:var(--acc2)}
   .badge.state-x{background:var(--t-no);color:var(--no)}
-  .who .dl-link{color:var(--acc2);text-decoration:underline;font-size:13px;margin-left:4px}
+  .who .dl-link{color:#a78bfa;text-decoration:underline;font-size:13px;margin-left:4px}
+  .pl-full-who .dl-link{color:#a78bfa;text-decoration:underline}
   .who .dl-link:active{opacity:.7}
   .badge.tipo-up{background:var(--t-ok);color:var(--ok);border:1px solid var(--ok);font-weight:700;font-size:10px;padding:1px 6px;letter-spacing:.5px}
   .badge.tipo-rep{background:var(--t-acc2);color:var(--acc2);border:1px solid var(--acc2);font-weight:700;font-size:10px;padding:1px 6px;letter-spacing:.5px}
-  .badge.art{background:var(--btn);color:var(--dim);border:1px solid var(--border);font-weight:700;font-size:10px;padding:1px 6px;letter-spacing:.5px}
+  .badge.art{background:var(--t-acc);color:var(--acc);border:1px solid #fff;font-weight:700;font-size:10px;padding:1px 6px;letter-spacing:.5px}
   .badge.src{background:var(--btn);color:var(--dim);border:1px solid var(--border);font-size:10px;padding:1px 6px;letter-spacing:.3px}
   .badge.crit{background:var(--btn);color:var(--dim);border:1px solid var(--border);font-size:10px;padding:1px 6px;letter-spacing:.3px}
   .actions{display:flex;gap:6px;margin-top:6px;flex-wrap:wrap}
@@ -258,7 +259,7 @@
   /* Las reglas de color viven bajo .who, que acá no aplica: el panel necesita
      las suyas o el nombre sale en el color del texto normal. */
   .pl-full-who .name{font-size:19px;font-weight:700;line-height:1.2}
-  .pl-full-who .name.artist-up{color:var(--ok)}
+  .pl-full-who .name.artist-up{color:var(--acc)}
   .pl-full-who .name.reposter{color:var(--acc2)}
   .pl-full-who .sep{color:var(--dim)}
   /* Barra de progreso del panel expandido. La de la mini barra queda tapada
@@ -492,7 +493,7 @@ const LS_QUEUE = 'sc_queue_v1';
 // Modo producción: carga tracks.json real y sincroniza con Google Sheet.
 // Versión del build. Subila cada vez que publiques para confirmar que
 // GitHub Pages ya sirve la última (se muestra arriba a la derecha).
-const APP_VERSION = 'v24-u';
+const APP_VERSION = 'v24-v';
 const DEV_MODE = false;
 const DEV_TRACKS = [
   {id:"davo--track1",u:"https://soundcloud.com/maccabihouse/daft-punk-hbfs-rafael-maccabi-edit",t:"Daft Punk - HBFS (Rafael Maccabi Edit)",a:"Maccabi House",d:"2026-06-15",r:3421,c:187,l:12450,g:"Indie Dance",dur:6.4,dl:"hypeddit",dlu:"https://hypeddit.com/example",cta:"davo",tipo:"REP",src:"Mis seguidos",added:"2026-07-12"},
@@ -772,15 +773,8 @@ function render(){
   // Filtros activos (cuenta) — chip removible + botón bulk-descartar
   const af = document.getElementById('activeFilters');
   const chips = [];
-  if (filterAccount) {
-    chips.push('<span class="active-filter" data-clear="account">Cuenta: ' + esc(filterAccount) + '</span>');
-  }
-  if (filterSource) {
-    chips.push('<span class="active-filter" data-clear="source">Origen: ' + esc(filterSource) + '</span>');
-  }
-  if (filterCrit) {
-    chips.push('<span class="active-filter" data-clear="crit">Nombre: ' + esc(filterCrit) + '</span>');
-  }
+  // Chips de cuenta/origen/nombre quitados (v24-v): se limpian desde sus dropdowns.
+  // Se mantiene solo el de Artista porque es el único filtro sin dropdown para limpiarlo.
   if (filterArtist) {
     chips.push('<span class="active-filter" data-clear="artist">Artista: ' + esc(filterArtist) + '</span>');
   }
@@ -788,9 +782,7 @@ function render(){
   // Botón bulk-descartar: aparece si hay filtro por cuenta activo (para no descartar todos los "Nuevos" por accidente)
   const hasFilter = filterAccount || filterSource || filterCrit || filterArtist;
   const notAlreadyDescartados = filterState !== 'descartados'; // no tiene sentido descartar los ya descartados
-  if (hasFilter && notAlreadyDescartados && filtered.length > 0) {
-    chips.push('<button class="bulk-btn" data-bulk="x">Descartar ' + fmt(filtered.length) + ' visibles</button>');
-  }
+  // Botón "Descartar N visibles" quitado (v24-v).
 
   af.innerHTML = chips.join('');
   syncHeaderHeight(); // el chip de cuenta cambia la altura del header flotante
@@ -943,8 +935,8 @@ function cardHTML(t){
         ${tipoBadge}
         <span class="name reposter" data-account="${esc(account)}">${esc(account)}</span>
         <span class="sep">→</span>
-        ${artBadge}
         <span class="name" data-artist-url="${esc(artistUrl)}">${esc(artist)}</span>
+        ${artBadge}
         ${dlLink}
         ${srcBadge}
         ${critBadge}
@@ -953,8 +945,8 @@ function cardHTML(t){
     // "Artista [UP] link" — artista con color verde coordinado al badge UP
     whoHTML = `
       <div class="who">
-        ${artBadge}
         <span class="name artist-up" data-artist-url="${esc(artistUrl)}">${esc(artist)}</span>
+        ${artBadge}
         ${tipoBadge}
         ${dlLink}
         ${srcBadge}
@@ -1262,13 +1254,12 @@ function updatePlayerUI(){
     : t.tipo === 'REP' ? '<span class="badge tipo-rep">REP</span>' : '';
   // Mostrar cuenta Y artista (v24-q): cuenta primero (acc2), artista después (verde); dedup si iguales.
   const _acc = t.cta || '', _art = t.a || '';
-  const _pnames = [];
-  if (_acc) _pnames.push(_acc);
-  if (_art && _art.toLowerCase() !== _acc.toLowerCase()) _pnames.push(_art);
-  if (!_pnames.length && _art) _pnames.push(_art);
-  const _whoHTML = _pnames.map((n, i) =>
-    '<span class="name ' + (i === 0 ? 'reposter' : 'artist-up') + '">' + esc(n) + '</span>'
-  ).join('<span class="sep">·</span>');
+  const _artBadge = '<span class="badge art">ART</span>';
+  const _parts = [];
+  if (_acc) _parts.push('<span class="name reposter">' + esc(_acc) + '</span>');
+  if (_art && _art.toLowerCase() !== _acc.toLowerCase()) _parts.push('<span class="name artist-up">' + esc(_art) + '</span>' + _artBadge);
+  if (!_parts.length && _art) _parts.push('<span class="name artist-up">' + esc(_art) + '</span>' + _artBadge);
+  const _whoHTML = _parts.join('<span class="sep">·</span>');
   document.getElementById('plFullWho').innerHTML = _whoHTML + tipo + dl;
 
   const s = getState(t.id);
