@@ -47,7 +47,7 @@
   *{box-sizing:border-box}
   html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
     font:15px/1.4 -apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',Roboto,sans-serif;
-    -webkit-tap-highlight-color:transparent;overscroll-behavior:none;overflow-x:hidden}
+    -webkit-tap-highlight-color:transparent;overscroll-behavior:none;overflow-x:clip}
   header{position:fixed;top:0;left:0;right:0;background:var(--bg);z-index:10;
     padding:env(safe-area-inset-top) 12px 0;overflow:visible}
   /* La parte siempre-visible del header (toggle + stats) define la altura base */
@@ -494,7 +494,7 @@ const LS_QUEUE = 'sc_queue_v1';
 // Modo producción: carga tracks.json real y sincroniza con Google Sheet.
 // Versión del build. Subila cada vez que publiques para confirmar que
 // GitHub Pages ya sirve la última (se muestra arriba a la derecha).
-const APP_VERSION = 'v25-b';
+const APP_VERSION = 'v25-c';
 const DEV_MODE = false;
 const DEV_TRACKS = [
   {id:"davo--track1",u:"https://soundcloud.com/maccabihouse/daft-punk-hbfs-rafael-maccabi-edit",t:"Daft Punk - HBFS (Rafael Maccabi Edit)",a:"Maccabi House",d:"2026-06-15",r:3421,c:187,l:12450,g:"Indie Dance",dur:6.4,dl:"hypeddit",dlu:"https://hypeddit.com/example",cta:"davo",tipo:"REP",src:"Mis seguidos",added:"2026-07-12"},
