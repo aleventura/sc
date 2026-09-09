@@ -156,6 +156,7 @@
   .who .dl-link:active{opacity:.7}
   .badge.tipo-up{background:var(--t-ok);color:var(--ok);border:1px solid var(--ok);font-weight:700;font-size:10px;padding:1px 6px;letter-spacing:.5px}
   .badge.tipo-rep{background:var(--t-acc2);color:var(--acc2);border:1px solid var(--acc2);font-weight:700;font-size:10px;padding:1px 6px;letter-spacing:.5px}
+  .badge.art{background:var(--btn);color:var(--dim);border:1px solid var(--border);font-weight:700;font-size:10px;padding:1px 6px;letter-spacing:.5px}
   .badge.src{background:var(--btn);color:var(--dim);border:1px solid var(--border);font-size:10px;padding:1px 6px;letter-spacing:.3px}
   .badge.crit{background:var(--btn);color:var(--dim);border:1px solid var(--border);font-size:10px;padding:1px 6px;letter-spacing:.3px}
   .actions{display:flex;gap:6px;margin-top:6px;flex-wrap:wrap}
@@ -265,8 +266,8 @@
   .pl-bar{height:8px;background:var(--btn);border:1px solid var(--border);
     border-radius:5px;overflow:hidden}
   .pl-bar-fill{height:100%;width:0;background:var(--acc);transition:width .25s linear}
-  .pl-times{display:flex;justify-content:space-between;font-size:13px;
-    color:var(--dim);font-variant-numeric:tabular-nums;margin-top:-4px}
+  .pl-times{display:flex;justify-content:space-between;font-size:19px;font-weight:600;
+    color:var(--fg);font-variant-numeric:tabular-nums;margin-top:2px}
   .pl-row{display:flex;gap:8px}
   .pl-row .btn{flex:1 1 0}
   .pl-row .btn.nav{flex:0 0 64px;font-size:16px}
@@ -485,7 +486,7 @@ const LS_QUEUE = 'sc_queue_v1';
 // Modo producción: carga tracks.json real y sincroniza con Google Sheet.
 // Versión del build. Subila cada vez que publiques para confirmar que
 // GitHub Pages ya sirve la última (se muestra arriba a la derecha).
-const APP_VERSION = 'v24-r';
+const APP_VERSION = 'v24-s';
 const DEV_MODE = false;
 const DEV_TRACKS = [
   {id:"davo--track1",u:"https://soundcloud.com/maccabihouse/daft-punk-hbfs-rafael-maccabi-edit",t:"Daft Punk - HBFS (Rafael Maccabi Edit)",a:"Maccabi House",d:"2026-06-15",r:3421,c:187,l:12450,g:"Indie Dance",dur:6.4,dl:"hypeddit",dlu:"https://hypeddit.com/example",cta:"davo",tipo:"REP",src:"Mis seguidos",added:"2026-07-12"},
@@ -901,6 +902,9 @@ function cardHTML(t){
     : t.tipo === 'REP' ? '<span class="badge tipo-rep">REP</span>'
     : '';
 
+  // Etiqueta de rol para el nombre del artista
+  const artBadge = '<span class="badge art">ART</span>';
+
   // Badge de origen/fuente (de qué scan vino el track); clickeable para filtrar
   const srcBadge = t.src
     ? '<span class="badge src" data-source="' + esc(t.src) + '" title="Filtrar por origen">📥 ' + esc(t.src) + '</span>'
@@ -922,9 +926,10 @@ function cardHTML(t){
     // "Cuenta [REP] → Artista link"
     whoHTML = `
       <div class="who">
-        <span class="name reposter" data-account="${esc(account)}">${esc(account)}</span>
         ${tipoBadge}
+        <span class="name reposter" data-account="${esc(account)}">${esc(account)}</span>
         <span class="sep">→</span>
+        ${artBadge}
         <span class="name" data-artist-url="${esc(artistUrl)}">${esc(artist)}</span>
         ${dlLink}
         ${srcBadge}
@@ -934,6 +939,7 @@ function cardHTML(t){
     // "Artista [UP] link" — artista con color verde coordinado al badge UP
     whoHTML = `
       <div class="who">
+        ${artBadge}
         <span class="name artist-up" data-artist-url="${esc(artistUrl)}">${esc(artist)}</span>
         ${tipoBadge}
         ${dlLink}
