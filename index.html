@@ -119,7 +119,7 @@
   .who .name:active{background:var(--btn-hover);border-color:var(--acc2)}
   /* Color coordinado con el badge de tipo */
   .who .name.artist-up{color:var(--acc)}
-  .who .name[data-artist-url]{color:var(--acc)}
+  .who .name[data-artist]{color:var(--acc)}
   .who .name.artist-rep{color:var(--fg)}
   .who .name.reposter{color:var(--acc2)}
   .who .sep{color:var(--dim);font-size:11px}
@@ -497,7 +497,7 @@ const LS_QUEUE = 'sc_queue_v1';
 // Modo producción: carga tracks.json real y sincroniza con Google Sheet.
 // Versión del build. Subila cada vez que publiques para confirmar que
 // GitHub Pages ya sirve la última (se muestra arriba a la derecha).
-const APP_VERSION = 'v25-d';
+const APP_VERSION = 'v25-e';
 const DEV_MODE = false;
 const DEV_TRACKS = [
   {id:"davo--track1",u:"https://soundcloud.com/maccabihouse/daft-punk-hbfs-rafael-maccabi-edit",t:"Daft Punk - HBFS (Rafael Maccabi Edit)",a:"Maccabi House",d:"2026-06-15",r:3421,c:187,l:12450,g:"Indie Dance",dur:6.4,dl:"hypeddit",dlu:"https://hypeddit.com/example",cta:"davo",tipo:"REP",src:"Mis seguidos",added:"2026-07-12"},
@@ -743,9 +743,12 @@ function render(){
         setState(id, s);
       });
     });
-    list.querySelectorAll('[data-artist-url]').forEach(el => {
+    list.querySelectorAll('[data-artist]').forEach(el => {
       el.addEventListener('click', () => {
-        window.open(el.dataset.artistUrl, '_blank', 'noopener');
+        filterArtist = el.dataset.artist;
+        const sel = document.getElementById('selectArtist'); if (sel) sel.value = filterArtist;
+        populateAccountsDropdown();
+        render();
       });
     });
     list.querySelectorAll('[data-account]').forEach(el => {
@@ -941,10 +944,10 @@ function cardHTML(t){
     whoHTML = `
       <div class="who">
         ${tipoBadge}
-        <span class="name reposter" data-artist-url="${esc(accountUrl)}">${esc(account)}</span>
+        <span class="name reposter" data-account="${esc(account)}" title="Filtrar por cuenta">${esc(account)}</span>
         <span class="sep">→</span>
         ${artBadge}
-        <span class="name" data-artist-url="${esc(artistUrl)}">${esc(artist)}</span>
+        <span class="name" data-artist="${esc(artist)}" title="Filtrar por artista">${esc(artist)}</span>
         ${dlLink}
         ${srcBadge}
         ${critBadge}
@@ -954,7 +957,7 @@ function cardHTML(t){
     whoHTML = `
       <div class="who">
         ${artBadge}
-        <span class="name artist-up" data-artist-url="${esc(artistUrl)}">${esc(artist)}</span>
+        <span class="name artist-up" data-artist="${esc(artist)}" title="Filtrar por artista">${esc(artist)}</span>
         ${tipoBadge}
         ${dlLink}
         ${srcBadge}
