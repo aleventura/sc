@@ -158,7 +158,7 @@
   .who .dl-link:active{opacity:.7}
   .badge.tipo-up{background:var(--t-ok);color:var(--ok);border:1px solid var(--ok);font-weight:700;font-size:10px;padding:1px 6px;letter-spacing:.5px}
   .badge.tipo-rep{background:var(--t-acc2);color:var(--acc2);border:1px solid var(--acc2);font-weight:700;font-size:10px;padding:1px 6px;letter-spacing:.5px}
-  .badge.art{background:var(--t-acc);color:var(--acc);border:1px solid #fff;font-weight:700;font-size:10px;padding:1px 6px;letter-spacing:.5px}
+  .badge.art{background:var(--t-acc);color:var(--acc);border:1px solid var(--acc);font-weight:700;font-size:10px;padding:1px 6px;letter-spacing:.5px}
   .badge.src{background:var(--btn);color:var(--dim);border:1px solid var(--border);font-size:10px;padding:1px 6px;letter-spacing:.3px}
   .badge.crit{background:var(--btn);color:var(--dim);border:1px solid var(--border);font-size:10px;padding:1px 6px;letter-spacing:.3px}
   .actions{display:flex;gap:6px;margin-top:6px;flex-wrap:wrap}
@@ -408,7 +408,7 @@
         <option value="">👤 Todas las cuentas</option>
       </select>
       <select class="search-input" id="selectCrit">
-        <option value="">🔎 Todos los nombres</option>
+        <option value="">🔎 Todas las búsquedas</option>
       </select>
     </div>
   </div>
@@ -494,7 +494,7 @@ const LS_QUEUE = 'sc_queue_v1';
 // Modo producción: carga tracks.json real y sincroniza con Google Sheet.
 // Versión del build. Subila cada vez que publiques para confirmar que
 // GitHub Pages ya sirve la última (se muestra arriba a la derecha).
-const APP_VERSION = 'v24-w';
+const APP_VERSION = 'v24-x';
 const DEV_MODE = false;
 const DEV_TRACKS = [
   {id:"davo--track1",u:"https://soundcloud.com/maccabihouse/daft-punk-hbfs-rafael-maccabi-edit",t:"Daft Punk - HBFS (Rafael Maccabi Edit)",a:"Maccabi House",d:"2026-06-15",r:3421,c:187,l:12450,g:"Indie Dance",dur:6.4,dl:"hypeddit",dlu:"https://hypeddit.com/example",cta:"davo",tipo:"REP",src:"Mis seguidos",added:"2026-07-12"},
@@ -936,8 +936,8 @@ function cardHTML(t){
         ${tipoBadge}
         <span class="name reposter" data-account="${esc(account)}">${esc(account)}</span>
         <span class="sep">→</span>
-        <span class="name" data-artist-url="${esc(artistUrl)}">${esc(artist)}</span>
         ${artBadge}
+        <span class="name" data-artist-url="${esc(artistUrl)}">${esc(artist)}</span>
         ${dlLink}
         ${srcBadge}
         ${critBadge}
@@ -946,8 +946,8 @@ function cardHTML(t){
     // "Artista [UP] link" — artista con color verde coordinado al badge UP
     whoHTML = `
       <div class="who">
-        <span class="name artist-up" data-artist-url="${esc(artistUrl)}">${esc(artist)}</span>
         ${artBadge}
+        <span class="name artist-up" data-artist-url="${esc(artistUrl)}">${esc(artist)}</span>
         ${tipoBadge}
         ${dlLink}
         ${srcBadge}
@@ -967,7 +967,7 @@ function cardHTML(t){
       </div>
       ${whoHTML}
       <div class="meta">
-        <span>${esc(t.d)}</span>
+        <span title="Subido a SoundCloud">🎙️ ${esc(t.d)}</span>
         ${t.added ? '<span title="Agregado al catálogo">+ ' + esc(t.added) + '</span>' : ''}
         <span>♻ ${fmt(t.r)}</span>
         <span>💬 ${fmt(t.c)}</span>
@@ -1258,8 +1258,8 @@ function updatePlayerUI(){
   const _artBadge = '<span class="badge art">ART</span>';
   const _parts = [];
   if (_acc) _parts.push('<span class="name reposter">' + esc(_acc) + '</span>');
-  if (_art && _art.toLowerCase() !== _acc.toLowerCase()) _parts.push('<span class="name artist-up">' + esc(_art) + '</span>' + _artBadge);
-  if (!_parts.length && _art) _parts.push('<span class="name artist-up">' + esc(_art) + '</span>' + _artBadge);
+  if (_art && _art.toLowerCase() !== _acc.toLowerCase()) _parts.push(_artBadge + '<span class="name artist-up">' + esc(_art) + '</span>');
+  if (!_parts.length && _art) _parts.push(_artBadge + '<span class="name artist-up">' + esc(_art) + '</span>');
   const _whoHTML = _parts.join('<span class="sep">·</span>');
   document.getElementById('plFullWho').innerHTML = _whoHTML + tipo + dl;
 
@@ -1546,30 +1546,38 @@ document.getElementById('selectCrit').addEventListener('change', e => {
 // Puebla el <select> con las cuentas presentes en la vista actual (según filterState).
 // No aplica filterAccount para que puedas seguir viendo las opciones disponibles.
 function populateAccountsDropdown(){
-  const accounts = [...new Set(
-    TRACKS
-      .filter(t => {
-        const s = getState(t.id);
-        if (filterState === 'nuevos' && s) return false;
-        if (filterState === 'g' && s !== 'g') return false;
-        if (filterState === 'g2' && s !== 'g2') return false;
-        if (filterState === 'descargados' && s !== 'dl') return false;
-        if (filterState === 'descartados' && s !== 'x') return false;
-        if (filterSource && (t.src || '') !== filterSource) return false;
-        if (filterCrit && (t.crit || '') !== filterCrit) return false;
-        if (filterArtist && (t.a || '') !== filterArtist) return false;
-        return true;
-      })
-      .map(t => t.cta)
-      .filter(Boolean)
-  )].sort((a, b) => a.localeCompare(b, 'es'));
+  // Cuenta -> cantidad de tracks NUEVOS (sin marcar), respetando origen/nombre/artista.
+  // La LISTA de cuentas sigue la vista de estado actual; el (N) siempre cuenta nuevos.
+  const inView = t => {
+    if (filterSource && (t.src || '') !== filterSource) return false;
+    if (filterCrit && (t.crit || '') !== filterCrit) return false;
+    if (filterArtist && (t.a || '') !== filterArtist) return false;
+    return true;
+  };
+  const nuevosPorCuenta = new Map();
+  const accountsSet = new Set();
+  TRACKS.forEach(t => {
+    if (!t.cta || !inView(t)) return;
+    const s = getState(t.id);
+    const inState = (filterState === 'nuevos') ? !s
+      : (filterState === 'g') ? s === 'g'
+      : (filterState === 'g2') ? s === 'g2'
+      : (filterState === 'descargados') ? s === 'dl'
+      : (filterState === 'descartados') ? s === 'x'
+      : true;
+    if (inState) accountsSet.add(t.cta);
+    if (!s) nuevosPorCuenta.set(t.cta, (nuevosPorCuenta.get(t.cta) || 0) + 1);
+  });
+  const accounts = [...accountsSet].sort((a, b) => a.localeCompare(b, 'es'));
 
   const select = document.getElementById('selectAccount');
   const current = select.value;
   select.innerHTML = '<option value="">👤 Todas las cuentas (' + accounts.length + ')</option>' +
-    accounts.map(a => '<option value="' + esc(a) + '">' + esc(a) + '</option>').join('');
+    accounts.map(a => {
+      const n = nuevosPorCuenta.get(a) || 0;
+      return '<option value="' + esc(a) + '">' + esc(a) + (n ? ' (' + n + ')' : '') + '</option>';
+    }).join('');
 
-  // Si la cuenta actualmente filtrada ya no está en la vista, limpiar el filtro
   if (current && !accounts.includes(current)) {
     filterAccount = null;
     select.value = '';
@@ -1635,7 +1643,7 @@ function populateCritDropdown(){
 
   const select = document.getElementById('selectCrit');
   const current = select.value;
-  select.innerHTML = '<option value="">🔎 Todos los nombres (' + crits.length + ')</option>' +
+  select.innerHTML = '<option value="">🔎 Todas las búsquedas (' + crits.length + ')</option>' +
     crits.map(a => '<option value="' + esc(a) + '">' + esc(a) + '</option>').join('');
 
   if (current && !crits.includes(current)) {
