@@ -356,6 +356,8 @@
     padding:10px 10px;margin-bottom:8px;display:flex;align-items:center;gap:10px}
   .sv-rank{flex:0 0 auto;font-size:14px;color:var(--dim);width:24px;text-align:right}
   .sv-main{flex:1 1 auto;min-width:0}
+  .sv-name-link{color:var(--acc2);cursor:pointer;border-radius:4px;padding:0 2px;margin:0 -2px;border:1px solid transparent}
+  .sv-name-link:active{background:var(--btn-hover);border-color:var(--acc2)}
   .sv-name{font-size:19px;font-weight:600;color:var(--fg);overflow:hidden;
     text-overflow:ellipsis;white-space:nowrap}
   .sv-sub{font-size:15px;color:var(--dim);margin-top:3px;display:flex;gap:8px;flex-wrap:wrap}
@@ -393,12 +395,10 @@
     </div>
     <div class="filters" id="sortFilters">
       <button class="chip sec" data-sort="marcado" id="sortMarcado">Marcado ↓</button>
-      <button class="chip sec active" data-sort="fecha">SC ↓</button>
-      <button class="chip sec" data-sort="added">Agregado ↓</button>
-      <button class="chip sec" data-sort="reposts">Reposts ↓</button>
-      <button class="chip sec" data-sort="comments">Comments ↓</button>
-      <button class="chip sec" data-sort="cuenta">Cuenta A→Z</button>
-      <button class="chip sec" data-sort="artista">Artista A→Z</button>
+      <button class="chip sec active" data-sort="fecha" title="Ordenar por fecha de subida a SoundCloud">⬆️ ↓</button>
+      <button class="chip sec" data-sort="added" title="Ordenar por fecha en que se agregó al catálogo">+ ↓</button>
+      <button class="chip sec" data-sort="reposts" title="Ordenar por reposts">♻ ↓</button>
+      <button class="chip sec" data-sort="comments" title="Ordenar por comentarios">💬 ↓</button>
     </div>
     <div class="search-row">
       <select class="search-input" id="selectSource">
@@ -406,6 +406,9 @@
       </select>
       <select class="search-input" id="selectAccount">
         <option value="">👤 Todas las cuentas</option>
+      </select>
+      <select class="search-input" id="selectArtist">
+        <option value="">🎤 Todos los artistas</option>
       </select>
       <select class="search-input" id="selectCrit">
         <option value="">🔎 Todas las búsquedas</option>
@@ -494,7 +497,7 @@ const LS_QUEUE = 'sc_queue_v1';
 // Modo producción: carga tracks.json real y sincroniza con Google Sheet.
 // Versión del build. Subila cada vez que publiques para confirmar que
 // GitHub Pages ya sirve la última (se muestra arriba a la derecha).
-const APP_VERSION = 'v25-c';
+const APP_VERSION = 'v25-d';
 const DEV_MODE = false;
 const DEV_TRACKS = [
   {id:"davo--track1",u:"https://soundcloud.com/maccabihouse/daft-punk-hbfs-rafael-maccabi-edit",t:"Daft Punk - HBFS (Rafael Maccabi Edit)",a:"Maccabi House",d:"2026-06-15",r:3421,c:187,l:12450,g:"Indie Dance",dur:6.4,dl:"hypeddit",dlu:"https://hypeddit.com/example",cta:"davo",tipo:"REP",src:"Mis seguidos",added:"2026-07-12"},
@@ -776,9 +779,7 @@ function render(){
   const chips = [];
   // Chips de cuenta/origen/nombre quitados (v24-v): se limpian desde sus dropdowns.
   // Se mantiene solo el de Artista porque es el único filtro sin dropdown para limpiarlo.
-  if (filterArtist) {
-    chips.push('<span class="active-filter" data-clear="artist">Artista: ' + esc(filterArtist) + '</span>');
-  }
+  // Artista ya se refleja en su propio combo (selectArtist); sin chip para igualar a los otros filtros.
 
   // Botón bulk-descartar: aparece si hay filtro por cuenta activo (para no descartar todos los "Nuevos" por accidente)
   const hasFilter = filterAccount || filterSource || filterCrit || filterArtist;
@@ -1549,6 +1550,12 @@ document.getElementById('selectCrit').addEventListener('change', e => {
   render();
 });
 
+document.getElementById('selectArtist').addEventListener('change', e => {
+  filterArtist = e.target.value || null;
+  populateAccountsDropdown();
+  render();
+});
+
 // Puebla el <select> con las cuentas presentes en la vista actual (según filterState).
 // No aplica filterAccount para que puedas seguir viendo las opciones disponibles.
 function populateAccountsDropdown(){
@@ -1666,6 +1673,47 @@ function populateCritDropdown(){
   } else {
     select.value = current;
   }
+  populateArtistsDropdown();
+}
+
+// Puebla el <select> de artistas presentes en la vista actual (según filterState).
+// (N) = tracks NUEVOS (sin marcar) por artista; respeta cuenta/origen/nombre.
+function populateArtistsDropdown(){
+  const inView = t => {
+    if (filterAccount && (t.cta || '') !== filterAccount) return false;
+    if (filterSource && (t.src || '') !== filterSource) return false;
+    if (filterCrit && (t.crit || '') !== filterCrit) return false;
+    return true;
+  };
+  const nuevosPorArtista = new Map();
+  const artistSet = new Set();
+  TRACKS.forEach(t => {
+    if (!t.a || !inView(t)) return;
+    const s = getState(t.id);
+    const inState = (filterState === 'nuevos') ? !s
+      : (filterState === 'g') ? s === 'g'
+      : (filterState === 'g2') ? s === 'g2'
+      : (filterState === 'descargados') ? s === 'dl'
+      : (filterState === 'descartados') ? s === 'x'
+      : true;
+    if (inState) artistSet.add(t.a);
+    if (!s) nuevosPorArtista.set(t.a, (nuevosPorArtista.get(t.a) || 0) + 1);
+  });
+  // el artista filtrado debe seguir presente aunque su vista de estado quede vacia
+  if (filterArtist) artistSet.add(filterArtist);
+  const artists = [...artistSet].sort((a, b) => a.localeCompare(b, 'es'));
+
+  const select = document.getElementById('selectArtist');
+  select.innerHTML = '<option value="">🎤 Todos los artistas (' + artists.length + ')</option>' +
+    artists.map(a => {
+      const n = nuevosPorArtista.get(a) || 0;
+      return '<option value="' + esc(a) + '">' + esc(a) + (n ? ' (' + n + ')' : '') + '</option>';
+    }).join('');
+
+  // El combo refleja SIEMPRE filterArtist (se puede setear desde Stats o clic).
+  const want = filterArtist || '';
+  if (want && !artists.includes(want)) { filterArtist = null; select.value = ''; }
+  else select.value = want;
 }
 
 // ============================================================
@@ -1690,8 +1738,12 @@ function computeStats(by){
     const key = ((by === 'a' ? t.a : t.cta) || '').trim();
     if (!key) return;
     let o = map.get(key);
-    if (!o) { o = { key, g2:0, g:0, dl:0, x:0, total:0, hasMis:false, g2ever:0 }; map.set(key, o); }
+    if (!o) { o = { key, g2:0, g:0, dl:0, x:0, total:0, hasMis:false, g2ever:0, uname:'' }; map.set(key, o); }
     o.total++;
+    if (!o.uname && t.tipo === 'UP') {
+      // Perfil directo: en un UP el que sube ES la cuenta; para artista solo si el artista se subió a sí mismo.
+      if (by === 'cta' || (by === 'a' && (t.cta || '').trim() === key)) o.uname = scUsername(t.u);
+    }
     if (t.src === 'Mis seguidos') o.hasMis = true;
     const s = getState(t.id);
     if (everG2.has(t.id) || s === 'g2') o.g2ever++;
@@ -1723,7 +1775,7 @@ function statRowHTML(o, i, by){
   return '<div class="sv-row">'
     + '<div class="sv-rank">' + (i + 1) + '</div>'
     + '<div class="sv-main">'
-      + '<div class="sv-name">' + esc(o.key) + ' <span class="sv-nuevos">(' + pend + ' nuevos)</span></div>'
+      + '<div class="sv-name"><span class="sv-name-link" data-sc-url="' + esc(o.uname ? ('https://soundcloud.com/' + o.uname) : ('https://soundcloud.com/search/people?q=' + encodeURIComponent(o.key))) + '" role="button" tabindex="0" title="Abrir en SoundCloud">' + esc(o.key) + '</span> <span class="sv-nuevos">(' + pend + ' nuevos)</span></div>'
       + '<div class="sv-sub">'
         + '<span class="' + (o.g2ever > 0 ? 'sv-g2' : '') + '">❤❤ ' + o.g2ever + '</span>'
         + '<span class="sv-pend' + (pend > 0 ? ' sv-pend-link' : '') + '"' + (pend > 0 ? ' role="button" tabindex="0" data-stat-by="' + by + '" data-stat-key="' + esc(o.key) + '" title="Ver los ' + pend + ' sin escuchar en el listado"' : '') + ' style="color:' + (pend > 0 ? 'var(--acc2)' : 'var(--dim)') + '">▶ ' + pend + ' por escuchar</span>'
@@ -1837,6 +1889,8 @@ function statsGoTo(by, key){
   window.scrollTo(0, 0);
 }
 document.getElementById('svList').addEventListener('click', e => {
+  const link = e.target.closest('[data-sc-url]');
+  if (link) { window.open(link.dataset.scUrl, '_blank', 'noopener'); return; }
   const el = e.target.closest('[data-stat-key]');
   if (!el) return;
   statsGoTo(el.dataset.statBy, el.dataset.statKey);
