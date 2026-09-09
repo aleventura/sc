@@ -364,6 +364,7 @@
   .sv-list > .sv-sech:first-child{border-top:none;margin-top:0}
   .sv-pend-link{cursor:pointer;text-decoration:underline;text-underline-offset:2px}
   .sv-pend-link:active{opacity:.6}
+  .sv-g2{color:var(--acc);font-weight:700;background:var(--t-acc);border-radius:6px;padding:1px 6px}
 </style>
 </head>
 <body>
@@ -486,7 +487,7 @@ const LS_QUEUE = 'sc_queue_v1';
 // Modo producción: carga tracks.json real y sincroniza con Google Sheet.
 // Versión del build. Subila cada vez que publiques para confirmar que
 // GitHub Pages ya sirve la última (se muestra arriba a la derecha).
-const APP_VERSION = 'v24-s';
+const APP_VERSION = 'v24-t';
 const DEV_MODE = false;
 const DEV_TRACKS = [
   {id:"davo--track1",u:"https://soundcloud.com/maccabihouse/daft-punk-hbfs-rafael-maccabi-edit",t:"Daft Punk - HBFS (Rafael Maccabi Edit)",a:"Maccabi House",d:"2026-06-15",r:3421,c:187,l:12450,g:"Indie Dance",dur:6.4,dl:"hypeddit",dlu:"https://hypeddit.com/example",cta:"davo",tipo:"REP",src:"Mis seguidos",added:"2026-07-12"},
@@ -1694,7 +1695,7 @@ function statRowHTML(o, i, by){
     + '<div class="sv-main">'
       + '<div class="sv-name">' + esc(o.key) + '</div>'
       + '<div class="sv-sub">'
-        + '<span>❤❤ ' + o.g2 + '</span><span>❤ ' + o.g + '</span>'
+        + '<span class="' + (o.g2 > 0 ? 'sv-g2' : '') + '">❤❤ ' + o.g2 + '</span><span>❤ ' + o.g + '</span>'
         + '<span>⬇ ' + o.dl + '</span><span>✕ ' + o.x + '</span>'
         + '<span class="sv-pend' + (pend > 0 ? ' sv-pend-link' : '') + '"' + (pend > 0 ? ' role="button" tabindex="0" data-stat-by="' + by + '" data-stat-key="' + esc(o.key) + '" title="Ver los ' + pend + ' sin escuchar en el listado"' : '') + ' style="color:' + (pend > 0 ? 'var(--acc2)' : 'var(--dim)') + '">▶ ' + pend + ' por escuchar</span>'
         + '<span>· ' + o.total + ' en catálogo</span>'
