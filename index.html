@@ -345,6 +345,9 @@
   .sv-min{display:flex;align-items:center;gap:6px;font-size:15px;color:var(--dim)}
   .sv-min input{width:54px;background:var(--btn);border:1px solid var(--border);color:var(--fg);
     border-radius:6px;padding:5px 6px;font-size:15px}
+  .sv-nf{background:var(--btn);border:1px solid var(--border);color:var(--fg);border-radius:8px;padding:6px 10px;font-size:15px;cursor:pointer;white-space:nowrap}
+  .sv-nf.active{background:var(--acc2);border-color:var(--acc2);color:var(--on-acc2)}
+  .sv-nuevos{color:var(--dim);font-weight:400;font-size:.8em}
   .sv-list{padding:8px 10px}
   .sv-note{font-size:14px;color:var(--dim);padding:2px 12px 8px}
   .sv-row{background:var(--card);border:1px solid var(--border);border-radius:10px;
@@ -420,6 +423,8 @@
       <button data-by="a">Por artista</button>
     </div>
     <label class="sv-min">mín. marcados <input type="number" id="svMin" min="1" value="3" inputmode="numeric"></label>
+    <button class="sv-nf active" id="svHideUnfollow" title="Ocultar cuentas que dejaste de seguir">🙈 Oculta las que dejé</button>
+    <button class="sv-nf" id="svNoFollow" title="Mostrar solo cuentas/artistas que no sigues">🚫 Solo no sigo</button>
   </div>
   <div class="sv-note" id="svNote"></div>
   <div class="sv-list" id="svList"></div>
@@ -487,7 +492,7 @@ const LS_QUEUE = 'sc_queue_v1';
 // Modo producción: carga tracks.json real y sincroniza con Google Sheet.
 // Versión del build. Subila cada vez que publiques para confirmar que
 // GitHub Pages ya sirve la última (se muestra arriba a la derecha).
-const APP_VERSION = 'v24-t';
+const APP_VERSION = 'v24-u';
 const DEV_MODE = false;
 const DEV_TRACKS = [
   {id:"davo--track1",u:"https://soundcloud.com/maccabihouse/daft-punk-hbfs-rafael-maccabi-edit",t:"Daft Punk - HBFS (Rafael Maccabi Edit)",a:"Maccabi House",d:"2026-06-15",r:3421,c:187,l:12450,g:"Indie Dance",dur:6.4,dl:"hypeddit",dlu:"https://hypeddit.com/example",cta:"davo",tipo:"REP",src:"Mis seguidos",added:"2026-07-12"},
@@ -503,6 +508,10 @@ const DEV_TRACKS = [
 // ============================================================
 let TRACKS = [];
 let st = JSON.parse(localStorage.getItem(LS) || '{}');
+// Recuerda qué tracks tuvieron ❤❤ alguna vez, aunque luego se marquen ⬇/otra cosa (v24-u; local a este dispositivo, no sincroniza).
+const LS_EVER_G2 = 'sc_ever_g2_v1';
+let everG2 = new Set(JSON.parse(localStorage.getItem(LS_EVER_G2) || '[]'));
+function saveEverG2(){ try { localStorage.setItem(LS_EVER_G2, JSON.stringify([...everG2])); } catch(e){} }
 let queue = JSON.parse(localStorage.getItem(LS_QUEUE) || '[]');  // ids de tracks encolados
 // st = { <trackId>: '<marca>' | '<marca>@<epoch ms>' }
 // Desde v24-g cada marca guarda CUÁNDO se puso. El formato sigue siendo un mapa
@@ -631,6 +640,10 @@ function setState(id, s){
   if (newState === undefined) delete st[id];
   else st[id] = encodeState(newState);
   save();
+
+  // Memoria de ❤❤ (v24-u): al marcar ❤❤ se recuerda; solo se olvida si lo quitas explícitamente.
+  if (newState === 'g2') { everG2.add(id); saveEverG2(); }
+  else if (prev === 'g2' && newState === undefined) { everG2.delete(id); saveEverG2(); }
 
   // La reproducción NO se corta al marcar: el widget es persistente.
   updatePlayerUI();
@@ -1654,6 +1667,8 @@ syncSortForView();
 // ============================================================
 let statsBy = 'cta';
 let FOLLOWING = new Set();   // nombres de cuentas que sigues ahora (viene de payload.following)
+let statsOnlyNotFollowed = false;   // mostrar solo los que NO sigo (v24-u)
+let statsHideUnfollowed = true;     // ocultar los que dejé de seguir; ON por defecto (v24-u)
 
 function computeStats(by){
   const map = new Map();
@@ -1661,10 +1676,11 @@ function computeStats(by){
     const key = ((by === 'a' ? t.a : t.cta) || '').trim();
     if (!key) return;
     let o = map.get(key);
-    if (!o) { o = { key, g2:0, g:0, dl:0, x:0, total:0, hasMis:false }; map.set(key, o); }
+    if (!o) { o = { key, g2:0, g:0, dl:0, x:0, total:0, hasMis:false, g2ever:0 }; map.set(key, o); }
     o.total++;
     if (t.src === 'Mis seguidos') o.hasMis = true;
     const s = getState(t.id);
+    if (everG2.has(t.id) || s === 'g2') o.g2ever++;
     if (s === 'g2') o.g2++;
     else if (s === 'g') o.g++;
     else if (s === 'dl') o.dl++;
@@ -1693,10 +1709,9 @@ function statRowHTML(o, i, by){
   return '<div class="sv-row">'
     + '<div class="sv-rank">' + (i + 1) + '</div>'
     + '<div class="sv-main">'
-      + '<div class="sv-name">' + esc(o.key) + '</div>'
+      + '<div class="sv-name">' + esc(o.key) + ' <span class="sv-nuevos">(' + pend + ' nuevos)</span></div>'
       + '<div class="sv-sub">'
-        + '<span class="' + (o.g2 > 0 ? 'sv-g2' : '') + '">❤❤ ' + o.g2 + '</span><span>❤ ' + o.g + '</span>'
-        + '<span>⬇ ' + o.dl + '</span><span>✕ ' + o.x + '</span>'
+        + '<span class="' + (o.g2ever > 0 ? 'sv-g2' : '') + '">❤❤ ' + o.g2ever + '</span>'
         + '<span class="sv-pend' + (pend > 0 ? ' sv-pend-link' : '') + '"' + (pend > 0 ? ' role="button" tabindex="0" data-stat-by="' + by + '" data-stat-key="' + esc(o.key) + '" title="Ver los ' + pend + ' sin escuchar en el listado"' : '') + ' style="color:' + (pend > 0 ? 'var(--acc2)' : 'var(--dim)') + '">▶ ' + pend + ' por escuchar</span>'
         + '<span>· ' + o.total + ' en catálogo</span>'
       + '</div>'
@@ -1714,19 +1729,31 @@ function renderStats(){
   const min = Math.max(1, parseInt(document.getElementById('svMin').value, 10) || 1);
   const all = computeStats(by);
   const conMarcas = all.filter(o => o.marked >= 1).length;
-  const rows = all
-    .filter(o => o.marked >= min)
-    .sort((a, b) => (b.rate - a.rate) || (b.marked - a.marked) || a.key.localeCompare(b.key, 'es'));
+  // "No sigo": exacto si hay lista FOLLOWING; si no, proxy = nunca vino de "Mis seguidos" (ej. solo GALLiVANTER).
+  const notFollowed = o => (FOLLOWING.size > 0) ? !FOLLOWING.has(o.key) : !o.hasMis;
+  // "Dejé de seguir": SOLO calculable con un scan fresco (FOLLOWING). Sin él = conjunto vacío (no se puede saber).
+  const dejeDeSeguir = o => (FOLLOWING.size > 0) && o.hasMis && !FOLLOWING.has(o.key);
+  let rows = all.filter(o => o.marked >= min);
+  if (statsHideUnfollowed) rows = rows.filter(o => !dejeDeSeguir(o));
+  if (statsOnlyNotFollowed) rows = rows.filter(notFollowed);
+  rows.sort((a, b) => (b.rate - a.rate) || (b.marked - a.marked) || a.key.localeCompare(b.key, 'es'));
 
   const noun = by === 'a' ? 'artistas' : 'cuentas';
-  const grouped = (by === 'cta') && FOLLOWING.size > 0;  // solo separa por seguir/no-seguir en vista por cuenta y con lista de seguidos
+  const grouped = (by === 'cta') && FOLLOWING.size > 0 && !statsOnlyNotFollowed;
   const el = document.getElementById('svList');
 
+  let noteExtra;
+  if (statsOnlyNotFollowed) {
+    noteExtra = ' — solo los que NO sigues' + (FOLLOWING.size ? '.' : ' (proxy: nunca vinieron de "Mis seguidos", ej. GALLiVANTER; corre el scan para exactitud).');
+  } else if (grouped) {
+    noteExtra = ' Separadas por si las sigues.';
+  } else if (by === 'cta') {
+    noteExtra = FOLLOWING.size ? '' : ' (Corre el scan de seguidos para detectar cuáles dejaste de seguir.)';
+  } else {
+    noteExtra = ' Ordenado por tasa de acierto.';
+  }
   document.getElementById('svNote').textContent =
-    rows.length + ' ' + noun + ' con ≥' + min + ' marcados (de ' + conMarcas + ' con alguna marca).'
-    + (grouped ? ' Separadas por si las sigues.'
-        : (by === 'cta' ? ' (Corre el scan de seguidos para separar seguidas / dejadas de seguir.)'
-                        : ' Ordenado por tasa de acierto.'));
+    rows.length + ' ' + noun + ' con ≥' + min + ' marcados (de ' + conMarcas + ' con alguna marca).' + noteExtra;
 
   if (!rows.length) {
     el.innerHTML = '<div class="sv-empty">Ninguna ' + noun.slice(0, -1) +
@@ -1763,6 +1790,16 @@ function closeStats(){ document.getElementById('statsView').hidden = true; }
 document.getElementById('statsBtn').addEventListener('click', openStats);
 document.getElementById('svBack').addEventListener('click', closeStats);
 document.getElementById('svMin').addEventListener('input', renderStats);
+document.getElementById('svHideUnfollow').addEventListener('click', () => {
+  statsHideUnfollowed = !statsHideUnfollowed;
+  document.getElementById('svHideUnfollow').classList.toggle('active', statsHideUnfollowed);
+  renderStats();
+});
+document.getElementById('svNoFollow').addEventListener('click', () => {
+  statsOnlyNotFollowed = !statsOnlyNotFollowed;
+  document.getElementById('svNoFollow').classList.toggle('active', statsOnlyNotFollowed);
+  renderStats();
+});
 document.getElementById('svSeg').addEventListener('click', e => {
   const b = e.target.closest('button[data-by]');
   if (!b) return;
