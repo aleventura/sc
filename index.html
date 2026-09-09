@@ -494,7 +494,7 @@ const LS_QUEUE = 'sc_queue_v1';
 // Modo producción: carga tracks.json real y sincroniza con Google Sheet.
 // Versión del build. Subila cada vez que publiques para confirmar que
 // GitHub Pages ya sirve la última (se muestra arriba a la derecha).
-const APP_VERSION = 'v25-a';
+const APP_VERSION = 'v25-b';
 const DEV_MODE = false;
 const DEV_TRACKS = [
   {id:"davo--track1",u:"https://soundcloud.com/maccabihouse/daft-punk-hbfs-rafael-maccabi-edit",t:"Daft Punk - HBFS (Rafael Maccabi Edit)",a:"Maccabi House",d:"2026-06-15",r:3421,c:187,l:12450,g:"Indie Dance",dur:6.4,dl:"hypeddit",dlu:"https://hypeddit.com/example",cta:"davo",tipo:"REP",src:"Mis seguidos",added:"2026-07-12"},
@@ -902,7 +902,13 @@ function cardHTML(t){
   const isRepost = account && artist && account.toLowerCase() !== artist.toLowerCase();
 
   // URL de SoundCloud del artista (extraída de la URL del track)
-  const artistUrl = 'https://soundcloud.com/' + scUsername(t.u);
+  const _scUser = scUsername(t.u);
+  const uploaderUrl = 'https://soundcloud.com/' + _scUser;
+  const scSearch = n => 'https://soundcloud.com/search/people?q=' + encodeURIComponent(n || '');
+  const _sameCtaA = account && artist && account.toLowerCase() === artist.toLowerCase();
+  // El uploader (dueño del track) es el ARTISTA en REP y en UP-igual; en UP-distinto el uploader es la CUENTA.
+  const artistUrl = (t.tipo === 'REP' || _sameCtaA || !account) ? uploaderUrl : scSearch(artist);
+  const accountUrl = (t.tipo === 'UP') ? uploaderUrl : scSearch(account);
 
   // Badge UP/REP con color según tipo (informativo, no clickeable)
   const tipoBadge = t.tipo === 'UP' ? '<span class="badge tipo-up">UP</span>'
@@ -934,7 +940,7 @@ function cardHTML(t){
     whoHTML = `
       <div class="who">
         ${tipoBadge}
-        <span class="name reposter" data-account="${esc(account)}">${esc(account)}</span>
+        <span class="name reposter" data-artist-url="${esc(accountUrl)}">${esc(account)}</span>
         <span class="sep">→</span>
         ${artBadge}
         <span class="name" data-artist-url="${esc(artistUrl)}">${esc(artist)}</span>
@@ -967,7 +973,7 @@ function cardHTML(t){
       </div>
       ${whoHTML}
       <div class="meta">
-        <span title="Subido a SoundCloud">🎙️ ${esc(t.d)}</span>
+        <span title="Subido a SoundCloud">⬆️ ${esc(t.d)}</span>
         ${t.added ? '<span title="Agregado al catálogo">+ ' + esc(t.added) + '</span>' : ''}
         <span>♻ ${fmt(t.r)}</span>
         <span>💬 ${fmt(t.c)}</span>
