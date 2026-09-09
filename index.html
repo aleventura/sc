@@ -47,7 +47,7 @@
   *{box-sizing:border-box}
   html,body{margin:0;padding:0;background:var(--bg);color:var(--fg);
     font:15px/1.4 -apple-system,BlinkMacSystemFont,'SF Pro Text','Segoe UI',Roboto,sans-serif;
-    -webkit-tap-highlight-color:transparent;overscroll-behavior:none}
+    -webkit-tap-highlight-color:transparent;overscroll-behavior:none;overflow-x:hidden}
   header{position:fixed;top:0;left:0;right:0;background:var(--bg);z-index:10;
     padding:env(safe-area-inset-top) 12px 0;overflow:visible}
   /* La parte siempre-visible del header (toggle + stats) define la altura base */
@@ -55,12 +55,12 @@
     padding-bottom:6px;border-bottom:1px solid var(--border);
     display:flex;flex-wrap:wrap;align-items:center;gap:6px 8px;padding-top:2px}
   .header-base .stats{flex:1 1 auto;min-width:0}
-  .header-base .toggle-filters{flex:0 0 auto;margin-left:auto}
+  .header-base .toggle-filters{flex:0 0 auto}
   .app-version{flex:0 0 auto;font-size:11px;color:var(--dim);margin-left:auto;
     font-variant-numeric:tabular-nums}
   /* Botón de tema, al lado del toggle de filtros */
   .theme-toggle{flex:0 0 auto;background:var(--btn);border:1px solid var(--border);
-    color:var(--fg);width:32px;height:32px;border-radius:6px;font-size:14px;
+    color:var(--fg);width:42px;height:34px;border-radius:6px;font-size:15px;
     cursor:pointer;display:flex;align-items:center;justify-content:center;
     margin-left:6px;line-height:1}
   .theme-toggle:active{background:var(--btn-hover)}
@@ -78,7 +78,7 @@
   h1{font-size:16px;margin:6px 0 8px}
   .header-top{display:flex;align-items:center;justify-content:flex-end;gap:8px}
   .toggle-filters{background:var(--btn);border:1px solid var(--border);color:var(--fg);
-    width:32px;height:32px;border-radius:6px;font-size:12px;cursor:pointer;
+    width:42px;height:34px;border-radius:6px;font-size:13px;cursor:pointer;
     display:flex;align-items:center;justify-content:center;transition:transform .3s ease}
   .toggle-filters.collapsed{transform:rotate(180deg)}
   .stats{margin-bottom:0;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
@@ -105,9 +105,9 @@
   .chip.active{background:var(--acc);border-color:var(--acc);color:var(--on-acc)}
   .chip.sec{background:transparent}
   .chip.sec.active{background:var(--acc2);border-color:var(--acc2)}
-  .list{padding:10px 10px var(--player-h, 40px);padding-top:var(--header-h, 160px)}
+  .list{padding:10px 6px var(--player-h, 40px);padding-top:var(--header-h, 160px)}
   .card{background:var(--card);border:1px solid var(--border);border-radius:12px;
-    padding:10px 12px;margin-bottom:8px;max-height:1000px}
+    padding:10px 10px;margin-bottom:8px;max-height:1000px}
   .card.hidden{display:none}
   .title{font-size:21px;font-weight:600;margin:0 0 4px;line-height:1.3}
   .meta{display:flex;gap:10px;flex-wrap:wrap;font-size:15px;color:var(--fg);margin-bottom:6px}
@@ -426,7 +426,7 @@
     </div>
     <label class="sv-min">mín. marcados <input type="number" id="svMin" min="1" value="3" inputmode="numeric"></label>
     <button class="sv-nf active" id="svHideUnfollow" title="Ocultar cuentas que dejaste de seguir">🙈 Oculta las que dejé</button>
-    <button class="sv-nf" id="svNoFollow" title="Mostrar solo cuentas/artistas que no sigues">🚫 Solo no sigo</button>
+    <button class="sv-nf" id="svNoFollow" title="Muestra SOLO cuentas/artistas que no sigues (incluye descubrimientos vía GALLiVANTER)">🚫 Solo no sigo</button>
   </div>
   <div class="sv-note" id="svNote"></div>
   <div class="sv-list" id="svList"></div>
@@ -494,7 +494,7 @@ const LS_QUEUE = 'sc_queue_v1';
 // Modo producción: carga tracks.json real y sincroniza con Google Sheet.
 // Versión del build. Subila cada vez que publiques para confirmar que
 // GitHub Pages ya sirve la última (se muestra arriba a la derecha).
-const APP_VERSION = 'v24-y';
+const APP_VERSION = 'v24-z';
 const DEV_MODE = false;
 const DEV_TRACKS = [
   {id:"davo--track1",u:"https://soundcloud.com/maccabihouse/daft-punk-hbfs-rafael-maccabi-edit",t:"Daft Punk - HBFS (Rafael Maccabi Edit)",a:"Maccabi House",d:"2026-06-15",r:3421,c:187,l:12450,g:"Indie Dance",dur:6.4,dl:"hypeddit",dlu:"https://hypeddit.com/example",cta:"davo",tipo:"REP",src:"Mis seguidos",added:"2026-07-12"},
@@ -1623,28 +1623,36 @@ function populateSourceDropdown(){
 
 // Puebla el <select> de nombres (criterio) presentes en la vista actual.
 function populateCritDropdown(){
-  const crits = [...new Set(
-    TRACKS
-      .filter(t => {
-        const s = getState(t.id);
-        if (filterState === 'nuevos' && s) return false;
-        if (filterState === 'g' && s !== 'g') return false;
-        if (filterState === 'g2' && s !== 'g2') return false;
-        if (filterState === 'descargados' && s !== 'dl') return false;
-        if (filterState === 'descartados' && s !== 'x') return false;
-        if (filterAccount && (t.cta || '') !== filterAccount) return false;
-        if (filterSource && (t.src || '') !== filterSource) return false;
-        if (filterArtist && (t.a || '') !== filterArtist) return false;
-        return true;
-      })
-      .map(t => t.crit)
-      .filter(Boolean)
-  )].sort((a, b) => a.localeCompare(b, 'es'));
+  // (N) = tracks NUEVOS (sin marcar) por búsqueda; respeta cuenta/origen/artista; la LISTA sigue la vista de estado.
+  const inView = t => {
+    if (filterAccount && (t.cta || '') !== filterAccount) return false;
+    if (filterSource && (t.src || '') !== filterSource) return false;
+    if (filterArtist && (t.a || '') !== filterArtist) return false;
+    return true;
+  };
+  const nuevosPorCrit = new Map();
+  const critSet = new Set();
+  TRACKS.forEach(t => {
+    if (!t.crit || !inView(t)) return;
+    const s = getState(t.id);
+    const inState = (filterState === 'nuevos') ? !s
+      : (filterState === 'g') ? s === 'g'
+      : (filterState === 'g2') ? s === 'g2'
+      : (filterState === 'descargados') ? s === 'dl'
+      : (filterState === 'descartados') ? s === 'x'
+      : true;
+    if (inState) critSet.add(t.crit);
+    if (!s) nuevosPorCrit.set(t.crit, (nuevosPorCrit.get(t.crit) || 0) + 1);
+  });
+  const crits = [...critSet].sort((a, b) => a.localeCompare(b, 'es'));
 
   const select = document.getElementById('selectCrit');
   const current = select.value;
   select.innerHTML = '<option value="">🔎 Todas las búsquedas (' + crits.length + ')</option>' +
-    crits.map(a => '<option value="' + esc(a) + '">' + esc(a) + '</option>').join('');
+    crits.map(a => {
+      const n = nuevosPorCrit.get(a) || 0;
+      return '<option value="' + esc(a) + '">' + esc(a) + (n ? ' (' + n + ')' : '') + '</option>';
+    }).join('');
 
   if (current && !crits.includes(current)) {
     filterCrit = null;
@@ -1714,6 +1722,7 @@ function statRowHTML(o, i, by){
         + '<span class="' + (o.g2ever > 0 ? 'sv-g2' : '') + '">❤❤ ' + o.g2ever + '</span>'
         + '<span class="sv-pend' + (pend > 0 ? ' sv-pend-link' : '') + '"' + (pend > 0 ? ' role="button" tabindex="0" data-stat-by="' + by + '" data-stat-key="' + esc(o.key) + '" title="Ver los ' + pend + ' sin escuchar en el listado"' : '') + ' style="color:' + (pend > 0 ? 'var(--acc2)' : 'var(--dim)') + '">▶ ' + pend + ' por escuchar</span>'
         + '<span>· ' + o.total + ' en catálogo</span>'
+        + '<span>· ' + (((FOLLOWING.size > 0) ? FOLLOWING.has(o.key) : o.hasMis) ? '✅ sigues' : '🚫 no sigues') + '</span>'
       + '</div>'
     + '</div>'
     + '<div class="sv-rate">'
@@ -1784,7 +1793,7 @@ function renderStats(){
   }).join('');
 }
 
-function openStats(){ document.getElementById('statsView').hidden = false; renderStats(); }
+function openStats(){ document.getElementById('statsView').hidden = false; document.getElementById('svHideUnfollow').hidden = (FOLLOWING.size === 0); renderStats(); }
 function closeStats(){ document.getElementById('statsView').hidden = true; }
 
 document.getElementById('statsBtn').addEventListener('click', openStats);
