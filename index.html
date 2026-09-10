@@ -497,7 +497,7 @@ const LS_QUEUE = 'sc_queue_v1';
 // Modo producción: carga tracks.json real y sincroniza con Google Sheet.
 // Versión del build. Subila cada vez que publiques para confirmar que
 // GitHub Pages ya sirve la última (se muestra arriba a la derecha).
-const APP_VERSION = 'v25-e';
+const APP_VERSION = 'v25-f';
 const DEV_MODE = false;
 const DEV_TRACKS = [
   {id:"davo--track1",u:"https://soundcloud.com/maccabihouse/daft-punk-hbfs-rafael-maccabi-edit",t:"Daft Punk - HBFS (Rafael Maccabi Edit)",a:"Maccabi House",d:"2026-06-15",r:3421,c:187,l:12450,g:"Indie Dance",dur:6.4,dl:"hypeddit",dlu:"https://hypeddit.com/example",cta:"davo",tipo:"REP",src:"Mis seguidos",added:"2026-07-12"},
@@ -1042,6 +1042,7 @@ function bindSlot(i){
   });
   slot.w.bind(E.PLAY, () => {
     if (i !== active) { slot.w.pause(); return; }   // el precargado no debe sonar
+    clearTimeout(window._blockTimer); showBlockWarning(false);
     playerState = 'playing'; updatePlayButtons();
   });
   slot.w.bind(E.PAUSE, () => {
@@ -1100,6 +1101,7 @@ function playTrack(url){
   updatePlayerUI();
   highlightPlayingCard();
   preloadNext();
+  armBlockCheck();
 }
 
 // Deja el siguiente track de la lista cargado en el slot inactivo
@@ -1223,8 +1225,44 @@ function mmss(ms){
   return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0');
 }
 
+// Aviso cuando el widget de SoundCloud no responde (bloqueo de red/DNS, etc.)
+function showBlockWarning(show){
+  let el = document.getElementById('plBlockWarn');
+  if (!el) {
+    el = document.createElement('div');
+    el.id = 'plBlockWarn';
+    el.style.cssText = 'display:none;font-size:12px;line-height:1.35;color:#fff;' +
+      'background:#8a1c1c;padding:7px 12px;text-align:center';
+    const player = document.getElementById('player');
+    const mini = document.getElementById('plMini');
+    if (player && mini) player.insertBefore(el, mini);
+  }
+  if (el) {
+    if (show) {
+      el.textContent = 'El reproductor de SoundCloud no responde: probablemente bloqueado por tu red o DNS. Las duraciones se muestran desde los datos; para escuchar, prueba otra red o datos moviles.';
+      el.style.display = 'block';
+    } else {
+      el.style.display = 'none';
+    }
+  }
+  syncPlayerHeight();
+}
+
+// Tras intentar reproducir, si en unos segundos no suena ni hay duracion real, avisa.
+function armBlockCheck(){
+  clearTimeout(window._blockTimer);
+  showBlockWarning(false);
+  window._blockTimer = setTimeout(() => {
+    if (playerState !== 'playing' && !W[active].dur) showBlockWarning(true);
+  }, 6000);
+}
+
 function renderTimes(pos){
-  const dur = W[active].dur || 0;
+  let dur = W[active].dur || 0;
+  if (!dur) {                       // widget sin cargar/bloqueado: usar duración del dato
+    const _t = TRACKS.find(x => x.u === currentPlayingUrl);
+    if (_t && _t.dur) dur = Math.round(_t.dur * 60000);   // minutos -> ms
+  }
   document.getElementById('plCur').textContent = mmss(pos);
   document.getElementById('plDur').textContent = mmss(dur);
   const pct = dur ? Math.min(100, (pos / dur) * 100) : 0;
@@ -1291,7 +1329,9 @@ function syncPlayerHeight(){
   const player = document.getElementById('player');
   const mini = document.getElementById('plMini');
   if (!player || !mini) return;
-  const h = player.classList.contains('visible') ? mini.offsetHeight + 14 : 40;
+  const _warn = document.getElementById('plBlockWarn');
+  const _warnH = (_warn && _warn.style.display !== 'none') ? _warn.offsetHeight : 0;
+  const h = player.classList.contains('visible') ? mini.offsetHeight + _warnH + 14 : 40;
   document.documentElement.style.setProperty('--player-h', h + 'px');
 }
 
