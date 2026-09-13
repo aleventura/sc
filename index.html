@@ -497,7 +497,7 @@ const LS_QUEUE = 'sc_queue_v1';
 // Modo producción: carga tracks.json real y sincroniza con Google Sheet.
 // Versión del build. Subila cada vez que publiques para confirmar que
 // GitHub Pages ya sirve la última (se muestra arriba a la derecha).
-const APP_VERSION = 'v25-f';
+const APP_VERSION = 'v25-g';
 const DEV_MODE = false;
 const DEV_TRACKS = [
   {id:"davo--track1",u:"https://soundcloud.com/maccabihouse/daft-punk-hbfs-rafael-maccabi-edit",t:"Daft Punk - HBFS (Rafael Maccabi Edit)",a:"Maccabi House",d:"2026-06-15",r:3421,c:187,l:12450,g:"Indie Dance",dur:6.4,dl:"hypeddit",dlu:"https://hypeddit.com/example",cta:"davo",tipo:"REP",src:"Mis seguidos",added:"2026-07-12"},
@@ -537,9 +537,27 @@ let lastSync = {kind:'', msg:''};  // último estado de sync (persiste entre ren
 // ============================================================
 // SYNC (localStorage -> Apps Script -> Google Sheet)
 // ============================================================
+const LS_DIRTY = 'sc_tracks_dirty_v1';   // hay marcas locales sin confirmar en el Sheet
+function markDirty(v){ try { localStorage.setItem(LS_DIRTY, v ? '1' : '0'); } catch(e){} }
+function isDirty(){ try { return localStorage.getItem(LS_DIRTY) === '1'; } catch(e){ return false; } }
+// Epoch ms de un valor de marca ('g@171...'); 0 si no trae fecha.
+function tsOfRaw(raw){ if (!raw) return 0; const i = raw.indexOf('@'); return i === -1 ? 0 : (parseInt(raw.slice(i+1),10) || 0); }
+// Une remoto + local por marca: gana la mas nueva (empate -> local). Conserva las de ambos lados.
+function mergeStates(remote, local){
+  const out = Object.assign({}, remote);
+  for (const id in local){
+    const lt = tsOfRaw(local[id]);
+    const rt = (id in remote) ? tsOfRaw(remote[id]) : -1;
+    if (lt >= rt) out[id] = local[id];
+  }
+  return out;
+}
+
 let pushTimer = null;
+let pushRetries = 0;
 function schedulePush(){
   clearTimeout(pushTimer);
+  pushRetries = 0;                 // accion del usuario: reintentos desde cero
   pushTimer = setTimeout(pushState, 800);
 }
 
@@ -548,10 +566,11 @@ function pushState(){
   if (DEV_MODE) { setSync('ok', 'DEV: push omitido'); return; }
   // Content-Type text/plain evita el preflight CORS (patrón conocido para Apps Script).
   // El Apps Script parsea el body como form-urlencoded desde postData.contents.
+  const payloadJson = JSON.stringify(st);
   fetch(SYNC_URL, {
     method: 'POST',
     headers: {'Content-Type': 'text/plain;charset=utf-8'},
-    body: 'data=' + encodeURIComponent(JSON.stringify(st))
+    body: 'data=' + encodeURIComponent(payloadJson)
   })
     .then(r => {
       if (!r.ok) throw new Error('HTTP ' + r.status);
@@ -559,6 +578,8 @@ function pushState(){
     })
     .then(res => {
       if (res && res.ok) {
+        pushRetries = 0;
+        if (JSON.stringify(st) === payloadJson) markDirty(false); // nada cambio mientras subia
         setSync('ok', 'Sync ' + new Date().toLocaleTimeString() + ' (' + (res.count || 0) + ')');
       } else {
         setSync('err', 'Sync respondió: ' + JSON.stringify(res));
@@ -566,6 +587,13 @@ function pushState(){
     })
     .catch(e => {
       setSync('err', 'Error sync: ' + e.message);
+      // Reintento automatico con espera creciente; las marcas ya estan en localStorage.
+      if (pushRetries < 10) {
+        const delay = Math.min(60000, 3000 * Math.pow(2, pushRetries));
+        pushRetries++;
+        clearTimeout(pushTimer);
+        pushTimer = setTimeout(pushState, delay);
+      }
     });
 }
 
@@ -579,11 +607,20 @@ function pullState(){
     })
     .then(remote => {
       if (!remote || typeof remote !== 'object') return;
-      // El Sheet es la fuente de verdad. Local siempre se sobreescribe con lo remoto.
-      st = remote;
-      localStorage.setItem(LS, JSON.stringify(st));
-      if (typeof render === 'function') render();
-      setSync('ok', 'Cargado ' + Object.keys(st).length + ' marcas');
+      if (isDirty()) {
+        // Hay marcas locales sin subir: NO pisarlas. Unir por fecha y subir el resultado.
+        st = mergeStates(remote, st);
+        localStorage.setItem(LS, JSON.stringify(st));
+        if (typeof render === 'function') render();
+        setSync('ok', 'Combinado ' + Object.keys(st).length + ' marcas, subiendo…');
+        schedulePush();
+      } else {
+        // Sin cambios locales pendientes: la planilla manda.
+        st = remote;
+        localStorage.setItem(LS, JSON.stringify(st));
+        if (typeof render === 'function') render();
+        setSync('ok', 'Cargado ' + Object.keys(st).length + ' marcas');
+      }
     })
     .catch(e => {
       setSync('err', 'Error pull: ' + e.message);
@@ -591,6 +628,7 @@ function pullState(){
 }
 
 function save(){
+  markDirty(true);
   localStorage.setItem(LS, JSON.stringify(st));
   schedulePush();
 }
