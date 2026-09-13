@@ -497,7 +497,7 @@ const LS_QUEUE = 'sc_queue_v1';
 // Modo producción: carga tracks.json real y sincroniza con Google Sheet.
 // Versión del build. Subila cada vez que publiques para confirmar que
 // GitHub Pages ya sirve la última (se muestra arriba a la derecha).
-const APP_VERSION = 'v25-h';
+const APP_VERSION = 'v25-i';
 const DEV_MODE = false;
 const DEV_TRACKS = [
   {id:"davo--track1",u:"https://soundcloud.com/maccabihouse/daft-punk-hbfs-rafael-maccabi-edit",t:"Daft Punk - HBFS (Rafael Maccabi Edit)",a:"Maccabi House",d:"2026-06-15",r:3421,c:187,l:12450,g:"Indie Dance",dur:6.4,dl:"hypeddit",dlu:"https://hypeddit.com/example",cta:"davo",tipo:"REP",src:"Mis seguidos",added:"2026-07-12"},
@@ -639,17 +639,18 @@ function setSync(kind, msg){
 }
 
 function applySync(){
+  const playerOn = !!currentPlayingUrl;   // hay track cargado -> el error va en el player, no arriba
   const el = document.getElementById('sync');
   if (el) {
     el.className = 'stats-sync ' + lastSync.kind;
-    el.textContent = (lastSync.msg && lastSync.kind !== 'ok') ? ' · ' + lastSync.msg : '';
+    el.textContent = (lastSync.msg && lastSync.kind !== 'ok' && !playerOn) ? ' · ' + lastSync.msg : '';
   }
-  // Reflejar el error de sync también como franja en el player
-  showSyncError(lastSync.kind === 'err' ? lastSync.msg : '');
+  showSyncError((lastSync.kind === 'err' && playerOn) ? lastSync.msg : '');
 }
 
 // Franja de error de sync dentro del player (ambar, distinta del aviso rojo de reproductor bloqueado)
 function showSyncError(msg){
+  // Franja sobre la mini barra (visible cuando el player esta colapsado)
   let el = document.getElementById('plSyncErr');
   if (!el) {
     el = document.createElement('div');
@@ -660,10 +661,22 @@ function showSyncError(msg){
     const mini = document.getElementById('plMini');
     if (player && mini) player.insertBefore(el, mini);
   }
-  if (el) {
-    if (msg) { el.textContent = '⚠ ' + msg; el.style.display = 'block'; }
-    else el.style.display = 'none';
+  // Linea dentro del panel expandido (el panel cubre la pantalla y tapaba la franja)
+  let fe = document.getElementById('plFullSyncErr');
+  if (!fe) {
+    const full = document.getElementById('plFull');
+    const q = document.getElementById('plQueue');
+    if (full && q) {
+      fe = document.createElement('div');
+      fe.id = 'plFullSyncErr';
+      fe.style.cssText = 'display:none;font-size:13px;line-height:1.35;color:#fff;' +
+        'background:#7a4a10;padding:8px 12px;text-align:center;border-radius:8px;margin:0 12px 4px';
+      full.insertBefore(fe, q);
+    }
   }
+  const on = !!msg;
+  if (el) { el.textContent = on ? '⚠ ' + msg : ''; el.style.display = on ? 'block' : 'none'; }
+  if (fe) { fe.textContent = on ? '⚠ ' + msg : ''; fe.style.display = on ? 'block' : 'none'; }
   syncPlayerHeight();
 }
 
@@ -1345,6 +1358,7 @@ function updatePlayerUI(){
   const t = TRACKS.find(x => x.u === currentPlayingUrl);
   if (!t) {
     player.classList.remove('visible', 'open');
+    applySync();
     syncPlayerHeight();
     return;
   }
@@ -1381,6 +1395,7 @@ function updatePlayerUI(){
   player.classList.add('visible');
   renderTimes(0);
   updatePlayButtons();
+  applySync();
   syncPlayerHeight();
 }
 
