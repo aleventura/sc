@@ -497,7 +497,7 @@ const LS_QUEUE = 'sc_queue_v1';
 // Modo producción: carga tracks.json real y sincroniza con Google Sheet.
 // Versión del build. Subila cada vez que publiques para confirmar que
 // GitHub Pages ya sirve la última (se muestra arriba a la derecha).
-const APP_VERSION = 'v25-k';
+const APP_VERSION = 'v25-l';
 const DEV_MODE = false;
 const DEV_TRACKS = [
   {id:"davo--track1",u:"https://soundcloud.com/maccabihouse/daft-punk-hbfs-rafael-maccabi-edit",t:"Daft Punk - HBFS (Rafael Maccabi Edit)",a:"Maccabi House",d:"2026-06-15",r:3421,c:187,l:12450,g:"Indie Dance",dur:6.4,dl:"hypeddit",dlu:"https://hypeddit.com/example",cta:"davo",tipo:"REP",src:"Mis seguidos",added:"2026-07-12"},
@@ -567,23 +567,19 @@ function pushState(){
   // Content-Type text/plain evita el preflight CORS (patrón conocido para Apps Script).
   // El Apps Script parsea el body como form-urlencoded desde postData.contents.
   const payloadJson = JSON.stringify(st);
+  // no-cors: Apps Script no manda cabeceras CORS en la respuesta del POST, y iOS Safari
+  // bloqueaba la lectura (el GET del pull si funciona). El POST igual llega y guarda en la
+  // planilla; la respuesta es opaca, asi que confirmamos como 'enviado'.
   fetch(SYNC_URL, {
     method: 'POST',
+    mode: 'no-cors',
     headers: {'Content-Type': 'text/plain;charset=utf-8'},
     body: 'data=' + encodeURIComponent(payloadJson)
   })
-    .then(r => {
-      if (!r.ok) throw new Error('HTTP ' + r.status);
-      return r.json();
-    })
-    .then(res => {
-      if (res && res.ok) {
-        pushRetries = 0;
-        if (JSON.stringify(st) === payloadJson) markDirty(false); // nada cambio mientras subia
-        setSync('ok', 'Sync ' + new Date().toLocaleTimeString() + ' (' + (res.count || 0) + ')');
-      } else {
-        setSync('err', 'Sync respondió: ' + JSON.stringify(res));
-      }
+    .then(() => {
+      pushRetries = 0;
+      if (JSON.stringify(st) === payloadJson) markDirty(false); // nada cambio mientras subia
+      setSync('ok', 'Sync ' + new Date().toLocaleTimeString());
     })
     .catch(e => {
       setSync('err', 'Error sync: ' + e.message);
