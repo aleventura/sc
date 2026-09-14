@@ -497,7 +497,7 @@ const LS_QUEUE = 'sc_queue_v1';
 // Modo producción: carga tracks.json real y sincroniza con Google Sheet.
 // Versión del build. Subila cada vez que publiques para confirmar que
 // GitHub Pages ya sirve la última (se muestra arriba a la derecha).
-const APP_VERSION = 'v25-l';
+const APP_VERSION = 'v25-m';
 const DEV_MODE = false;
 const DEV_TRACKS = [
   {id:"davo--track1",u:"https://soundcloud.com/maccabihouse/daft-punk-hbfs-rafael-maccabi-edit",t:"Daft Punk - HBFS (Rafael Maccabi Edit)",a:"Maccabi House",d:"2026-06-15",r:3421,c:187,l:12450,g:"Indie Dance",dur:6.4,dl:"hypeddit",dlu:"https://hypeddit.com/example",cta:"davo",tipo:"REP",src:"Mis seguidos",added:"2026-07-12"},
@@ -970,6 +970,20 @@ function setQueueBtn(el, queued){
   el.classList.toggle('queued', queued);
 }
 
+// Roles para mostrar quien es el artista y quien (si aplica) reposteo o busco.
+// REP: la cuenta reposteo un track del artista. UP: el artista es el uploader;
+// si la cuenta difiere, es el termino de busqueda que lo encontro (no un reposteador).
+function whoRoles(t){
+  const a = t.a || '';
+  const cta = t.cta || '';
+  const diff = cta && a && cta.toLowerCase() !== a.toLowerCase();
+  return {
+    a, cta,
+    isRep: t.tipo === 'REP' && diff,
+    foundVia: (t.tipo !== 'REP' && diff) ? cta : ''
+  };
+}
+
 function cardHTML(t){
   const s = getState(t.id);
   const stateBadge = s === 'g' ? '<span class="badge state-g">❤ Descargar</span>'
@@ -981,7 +995,7 @@ function cardHTML(t){
   // Fila de quien
   const artist = t.a || '';
   const account = t.cta || '';
-  const isRepost = account && artist && account.toLowerCase() !== artist.toLowerCase();
+  const isRepost = t.tipo === 'REP' && account && artist && account.toLowerCase() !== artist.toLowerCase();
 
   // URL de SoundCloud del artista (extraída de la URL del track)
   const _scUser = scUsername(t.u);
@@ -1368,27 +1382,31 @@ function updatePlayerUI(){
     return;
   }
   document.getElementById('plMiniTitle').textContent = t.t;
-  // Bajo el título: cuenta y artista (v24-o). Dedup si son iguales; si falta cuenta, solo artista.
-  const _who = [];
-  if (t.cta) _who.push(t.cta);
-  if (t.a && t.a !== t.cta) _who.push(t.a);
-  if (!_who.length && t.a) _who.push(t.a);
-  document.getElementById('plMiniArtist').textContent = _who.join('  ·  ');
+  // Bajo el titulo (mini): en REP "cuenta -> artista"; en UP el artista (uploader),
+  // y si vino de una busqueda, el termino con lupa (no es reposteador).
+  const _wr = whoRoles(t);
+  document.getElementById('plMiniArtist').textContent =
+    _wr.isRep ? (_wr.cta + '  →  ' + _wr.a)
+              : ((_wr.a || _wr.cta) + (_wr.foundVia ? '  ·  🔎 ' + _wr.foundVia : ''));
   document.getElementById('plFullTitle').textContent = t.t;
 
   const dl = t.dlu ? '<a class="dl-link" href="' + esc(t.dlu) + '" target="_blank" rel="noopener">' +
     esc(dlLabel(t.dl)) + '</a>' : '';
-  const tipo = t.tipo === 'UP' ? '<span class="badge tipo-up">UP</span>'
-    : t.tipo === 'REP' ? '<span class="badge tipo-rep">REP</span>' : '';
-  // Mostrar cuenta Y artista (v24-q): cuenta primero (acc2), artista después (verde); dedup si iguales.
-  const _acc = t.cta || '', _art = t.a || '';
   const _artBadge = '<span class="badge art">ART</span>';
-  const _parts = [];
-  if (_acc) _parts.push('<span class="name reposter">' + esc(_acc) + '</span>');
-  if (_art && _art.toLowerCase() !== _acc.toLowerCase()) _parts.push(_artBadge + '<span class="name artist-up">' + esc(_art) + '</span>');
-  if (!_parts.length && _art) _parts.push(_artBadge + '<span class="name artist-up">' + esc(_art) + '</span>');
-  const _whoHTML = _parts.join('<span class="sep">·</span>');
-  document.getElementById('plFullWho').innerHTML = _whoHTML + tipo + dl;
+  let _whoHTML;
+  if (_wr.isRep) {
+    // La cuenta reposteo un track del artista
+    _whoHTML = '<span class="badge tipo-rep">REP</span>'
+      + '<span class="name reposter">' + esc(_wr.cta) + '</span>'
+      + '<span class="sep">→</span>'
+      + _artBadge + '<span class="name artist-up">' + esc(_wr.a) + '</span>';
+  } else {
+    // Subido por el artista; si vino de una busqueda, se marca con lupa
+    _whoHTML = _artBadge + '<span class="name artist-up">' + esc(_wr.a || _wr.cta) + '</span>'
+      + (t.tipo === 'UP' ? '<span class="badge tipo-up">UP</span>' : '')
+      + (_wr.foundVia ? '<span class="badge crit">🔎 ' + esc(_wr.foundVia) + '</span>' : '');
+  }
+  document.getElementById('plFullWho').innerHTML = _whoHTML + dl;
 
   const s = getState(t.id);
   document.getElementById('plMarks').innerHTML =
